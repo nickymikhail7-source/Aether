@@ -5,7 +5,7 @@ import { getThread } from '@/lib/gmail'
 
 export async function GET(
     request: NextRequest,
-    { params }: { params: { threadId: string } }
+    { params }: { params: Promise<{ threadId: string }> }
 ) {
     try {
         // Get session to access user's tokens
@@ -18,7 +18,8 @@ export async function GET(
             )
         }
 
-        const threadId = params.threadId
+        // Await params (Next.js 15+ requirement)
+        const { threadId } = await params
 
         if (!threadId) {
             return NextResponse.json(
