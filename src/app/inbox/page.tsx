@@ -283,6 +283,43 @@ export default function InboxPage() {
             .trim()
     }
 
+    function cleanEmailContent(body: string): string {
+        return body
+            // Remove quoted reply lines (starting with >)
+            .replace(/^>.*$/gm, '')
+            // Remove multiple blank lines
+            .replace(/\n{3,}/g, '\n\n')
+            // Convert HTML entities
+            .replace(/&#8208;/g, '-')
+            .replace(/&amp;/g, '&')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&quot;/g, '"')
+            // Remove raw URLs in angle brackets
+            .replace(/<https?:\/\/[^>]+>/g, '')
+            // Trim whitespace
+            .trim();
+    }
+
+    function isCalendarInvite(subject: string, body: string): boolean {
+        return body.includes('calendar.google.com/calendar/event') ||
+            (body.includes('Yes') && body.includes('No') && body.includes('Maybe') && body.includes('invitation'));
+    }
+
+    function extractEventDetails(subject: string, body: string) {
+        // Simple extraction logic
+        const title = subject.replace(/^Invitation: /, '').replace(/^Updated invitation: /, '');
+        // Try to find date/time patterns if possible, otherwise generic
+        const dateMatch = body.match(/When: (.*?)\n/);
+        const locationMatch = body.match(/Where: (.*?)\n/);
+
+        return {
+            title,
+            time: dateMatch ? dateMatch[1] : 'Check details',
+            location: locationMatch ? locationMatch[1] : 'Online / See details'
+        };
+    }
+
     const priorityThreads = threads.filter(t => t.unread).slice(0, 5)
     const recentThreads = threads.filter(t => !t.unread).slice(0, 15)
 
@@ -557,43 +594,82 @@ export default function InboxPage() {
 
                             {threadDetail.messages.map((message, index) => {
                                 const isMe = isMyMessage(message.from)
+                                const senderName = message.from.split('<')[0].trim().replace(/"/g, '')
+                                const senderEmail = message.from.match(/<([^>]+)>/)?.[1] || message.from
+                                const senderInitials = getInitials(senderName)
+                                const cleanedBody = message.isHtml ? stripHtml(message.body) : message.body
+                                const finalBody = cleanEmailContent(cleanedBody)
+                                const isInvite = isCalendarInvite(message.subject, cleanedBody)
+                                const eventDetails = isInvite ? extractEventDetails(message.subject, cleanedBody) : null
 
                                 return (
                                     <div
                                         key={message.id}
-                                        className={`flex ${isMe ? 'justify-end' : 'justify-start'} group animate-in fade-in slide-in-from-bottom-4 duration-500`}
+                                        className={`group animate-in fade-in slide-in-from-bottom-4 duration-500`}
                                         style={{ animationDelay: `${index * 50}ms` }}
                                     >
-                                        <div className={`flex items-end space-x-3 max-w-2xl ${isMe ? 'flex-row-reverse space-x-reverse' : ''}`}>
-                                            {/* Avatar */}
-                                            {!isMe && (
-                                                <div className="w-8 h-8 rounded-full bg-surface-elevated flex items-center justify-center flex-shrink-0 mb-1 border border-border">
-                                                    <span className="text-[10px] font-bold text-text-secondary">
-                                                        {getInitials(message.from)}
-                                                    </span>
+                                        <div className={`message max-w-3xl mx-auto ${isMe ? 'ml-auto' : ''}`}>
+                                            {/* Message Header */}
+                                            <div className={`flex items-center gap-3 mb-3 ${isMe ? 'flex-row-reverse' : ''}`}>
+                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-medium shadow-lg ${isMe
+                                                    ? 'bg-gradient-to-br from-accent to-purple'
+                                                    : 'bg-surface-elevated border border-border'
+                                                    }`}>
+                                                    {senderInitials}
                                                 </div>
-                                            )}
+                                                <div className={`flex-1 ${isMe ? 'text-right' : ''}`}>
+                                                    <div className={`flex items-center gap-2 ${isMe ? 'justify-end' : ''}`}>
+                                                        <span className="font-semibold text-white">{senderName}</span>
+                                                        <span className="text-sm text-white/40">{senderEmail}</span>
+                                                    </div>
+                                                    <span className="text-xs text-white/30">{formatMessageDate(message.date)}</span>
+                                                </div>
+                                            </div>
 
-                                            {/* Message Bubble */}
-                                            <div className="space-y-1">
-                                                {!isMe && (
-                                                    <div className="flex items-center space-x-2 ml-1">
-                                                        <span className="text-text-secondary text-xs font-medium">
-                                                            {message.from.split('<')[0].trim()}
-                                                        </span>
+                                            {/* Message Body */}
+                                            <div className={`pl-13 text-white/80 leading-relaxed ${isMe ? 'pr-13 pl-0 text-right' : 'pl-13'}`}>
+                                                {isInvite && eventDetails ? (
+                                                    <div className="glass rounded-xl p-5 mb-4 border-l-4 border-l-accent max-w-md">
+                                                        <div className="flex items-center gap-3 mb-3">
+                                                            <div className="w-10 h-10 rounded-lg bg-surface-elevated flex items-center justify-center text-xl">
+                                                                📅
+                                                            </div>
+                                                            <div>
+                                                                <h3 className="font-semibold text-white">{eventDetails.title}</h3>
+                                                                <p className="text-xs text-white/50">Calendar Invitation</p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="space-y-2 mb-4 text-sm">
+                                                            <div className="flex items-start gap-2">
+                                                                <span className="text-white/40 w-12">When:</span>
+                                                                <span className="text-white/90">{eventDetails.time}</span>
+                                                            </div>
+                                                            <div className="flex items-start gap-2">
+                                                                <span className="text-white/40 w-12">Where:</span>
+                                                                <span className="text-white/90">{eventDetails.location}</span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex gap-2">
+                                                            <button className="px-3 py-1.5 rounded-md bg-accent/20 text-accent hover:bg-accent/30 text-xs font-medium transition-colors">Accept</button>
+                                                            <button className="px-3 py-1.5 rounded-md bg-white/5 text-white/70 hover:bg-white/10 text-xs font-medium transition-colors">Maybe</button>
+                                                            <button className="px-3 py-1.5 rounded-md bg-white/5 text-white/70 hover:bg-white/10 text-xs font-medium transition-colors">Decline</button>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div className={`rounded-2xl px-5 py-3.5 shadow-sm inline-block text-left ${isMe
+                                                        ? 'bg-gradient-to-br from-accent/10 to-purple/10 border border-accent/20 text-white rounded-tr-sm'
+                                                        : 'bg-surface-elevated border border-border text-text-primary rounded-tl-sm'
+                                                        }`}>
+                                                        <div className="whitespace-pre-wrap break-words font-light">
+                                                            {finalBody.split(/(\s+)/).map((part, i) => {
+                                                                if (part.match(/^https?:\/\//)) {
+                                                                    return <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">{part}</a>
+                                                                }
+                                                                return part
+                                                            })}
+                                                        </div>
                                                     </div>
                                                 )}
-                                                <div className={`rounded-2xl px-5 py-3.5 shadow-sm ${isMe
-                                                    ? 'bg-gradient-to-br from-accent to-purple text-white rounded-br-sm'
-                                                    : 'bg-surface-elevated border border-border text-text-primary rounded-bl-sm'
-                                                    }`}>
-                                                    <div className="text-sm leading-relaxed whitespace-pre-wrap break-words font-light">
-                                                        {message.isHtml ? stripHtml(message.body) : message.body}
-                                                    </div>
-                                                </div>
-                                                <div className={`text-[10px] text-text-muted font-mono opacity-0 group-hover:opacity-100 transition-opacity ${isMe ? 'text-right mr-1' : 'ml-1'}`}>
-                                                    {formatMessageDate(message.date)}
-                                                </div>
                                             </div>
                                         </div>
                                     </div>
