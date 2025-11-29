@@ -37,15 +37,29 @@ export function createGmailClient(accessToken: string) {
  */
 export async function listThreads(
     accessToken: string,
-    maxResults: number = 20
+    maxResults: number = 20,
+    category: string = 'focus'
 ): Promise<GmailThread[]> {
     const gmail = createGmailClient(accessToken)
+
+    // Map categories to Gmail search queries
+    const queries: Record<string, string> = {
+        focus: 'is:inbox is:unread category:primary',
+        people: 'is:inbox category:primary',
+        newsletters: 'is:inbox (category:promotions OR category:updates)',
+        notifications: 'is:inbox category:updates',
+        sent: 'is:sent',
+        drafts: 'is:draft',
+    }
+
+    const q = queries[category] || queries.focus
 
     try {
         // Get list of thread IDs
         const response = await gmail.users.threads.list({
             userId: 'me',
             maxResults,
+            q,
         })
 
         if (!response.data.threads) {

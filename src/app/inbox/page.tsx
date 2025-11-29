@@ -51,6 +51,7 @@ export default function InboxPage() {
     const [loadingAI, setLoadingAI] = useState(false)
     const [loadingDraft, setLoadingDraft] = useState(false)
     const [replyText, setReplyText] = useState('')
+    const [selectedCategory, setSelectedCategory] = useState('focus')
     const messagesEndRef = useRef<HTMLDivElement>(null)
     const messageContainerRef = useRef<HTMLDivElement>(null)
 
@@ -67,7 +68,7 @@ export default function InboxPage() {
         if (status === 'authenticated') {
             fetchThreads()
         }
-    }, [status, router])
+    }, [status, router, selectedCategory])
 
     useEffect(() => {
         if (selectedThreadId) {
@@ -94,7 +95,9 @@ export default function InboxPage() {
             setLoading(true)
             setError(null)
 
-            const response = await fetch('/api/gmail/threads')
+            setError(null)
+
+            const response = await fetch(`/api/gmail/threads?category=${selectedCategory}`)
 
             if (!response.ok) {
                 const data = await response.json()
@@ -303,6 +306,48 @@ export default function InboxPage() {
                         </div>
                         <span className="text-text-primary font-semibold text-lg">Aether</span>
                     </Link>
+                </div>
+
+                {/* Views / Categories */}
+                <div className="px-3 py-4 space-y-1 border-b border-border">
+                    <div className="px-3 mb-2">
+                        <h2 className="text-text-secondary text-xs font-semibold uppercase tracking-wider">
+                            Views
+                        </h2>
+                    </div>
+                    {[
+                        { id: 'focus', label: 'Focus', icon: '⚡' },
+                        { id: 'people', label: 'People', icon: '👤' },
+                        { id: 'newsletters', label: 'Newsletters', icon: '📰' },
+                        { id: 'notifications', label: 'Notifications', icon: '🔔' },
+                        { id: 'sent', label: 'Sent', icon: '➤' },
+                        { id: 'drafts', label: 'Drafts', icon: '📝' },
+                    ].map((category) => (
+                        <button
+                            key={category.id}
+                            onClick={() => {
+                                setSelectedCategory(category.id)
+                                setSelectedThreadId(null)
+                            }}
+                            className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-between group ${selectedCategory === category.id
+                                ? 'bg-surface-hover text-text-primary border-l-2 border-accent'
+                                : 'text-text-secondary hover:bg-surface-hover hover:text-text-primary'
+                                }`}
+                        >
+                            <div className="flex items-center space-x-3">
+                                <span className="w-5 text-center">{category.icon}</span>
+                                <span>{category.label}</span>
+                            </div>
+                            {category.id === 'focus' && (
+                                <span className={`text-xs px-1.5 py-0.5 rounded-full ${selectedCategory === 'focus'
+                                    ? 'bg-accent text-white'
+                                    : 'bg-surface-hover text-text-secondary group-hover:bg-border'
+                                    }`}>
+                                    {threads.filter(t => t.unread).length || ''}
+                                </span>
+                            )}
+                        </button>
+                    ))}
                 </div>
 
                 {/* Conversations List */}

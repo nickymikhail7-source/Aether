@@ -20,8 +20,13 @@ export async function GET(request: NextRequest) {
         }
 
         console.log('Fetching Gmail threads...')
+
+        // Get category from query params
+        const searchParams = request.nextUrl.searchParams
+        const category = searchParams.get('category') || 'focus'
+
         // Fetch Gmail threads
-        const threads = await listThreads(session.accessToken as string, 20)
+        const threads = await listThreads(session.accessToken as string, 20, category)
 
         console.log('Threads fetched:', threads.length)
         return NextResponse.json({ threads })
