@@ -67,9 +67,9 @@ export async function listThreads(
         )
 
         return threads.filter((t): t is GmailThread => t !== null)
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error fetching Gmail threads:', error)
-        throw new Error('Failed to fetch Gmail threads')
+        throw new Error(error.message || 'Failed to fetch Gmail threads')
     }
 }
 
