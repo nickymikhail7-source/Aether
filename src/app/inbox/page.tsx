@@ -229,9 +229,11 @@ export default function InboxPage() {
         return html
             .replace(/<style[^>]*>.*?<\/style>/gi, '')
             .replace(/<script[^>]*>.*?<\/script>/gi, '')
-            // Preserve images as markers
-            .replace(/<img[^>]+src="([^">]+)"[^>]*>/gi, '[[IMAGE:$1]]')
-            .replace(/<img[^>]+src='([^'>]+)'[^>]*>/gi, '[[IMAGE:$1]]')
+            // Preserve images as markers with newlines
+            .replace(/<img[^>]+src="([^">]+)"[^>]*>/gi, '\n\n[[IMAGE:$1]]\n\n')
+            .replace(/<img[^>]+src='([^'>]+)'[^>]*>/gi, '\n\n[[IMAGE:$1]]\n\n')
+            // Replace block tags with newlines to preserve structure
+            .replace(/<(br|p|div|h\d|li|tr|table)[^>]*>/gi, '\n')
             .replace(/<[^>]+>/g, '')
             .replace(/&nbsp;/g, ' ')
             .replace(/&amp;/g, '&')

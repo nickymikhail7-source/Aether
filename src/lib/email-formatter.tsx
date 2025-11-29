@@ -29,17 +29,42 @@ export function formatEmailContent(body: string): React.ReactNode[] {
         const trimmed = para.trim();
         if (!trimmed) return null;
 
-        // Check if it's an image marker
-        const imageMatch = trimmed.match(/^\[\[IMAGE:(.+)\]\]$/);
+        // Check if it's an image marker (robust check)
+        const imageMatch = trimmed.match(/\[\[IMAGE:(.+)\]\]/);
         if (imageMatch) {
+            // If the paragraph IS just the image
+            if (trimmed === imageMatch[0]) {
+                return (
+                    <div key={index} className="my-4">
+                        <img
+                            src={imageMatch[1]}
+                            alt="Email content"
+                            className="max-w-full h-auto rounded-lg border border-white/10 shadow-sm"
+                            loading="lazy"
+                        />
+                    </div>
+                );
+            }
+
+            // If the paragraph contains an image mixed with text, split it
+            const parts = trimmed.split(/(\[\[IMAGE:.+?\]\])/);
             return (
-                <div key={index} className="my-4">
-                    <img
-                        src={imageMatch[1]}
-                        alt="Email content"
-                        className="max-w-full h-auto rounded-lg border border-white/10 shadow-sm"
-                        loading="lazy"
-                    />
+                <div key={index} className="mb-4 text-white/80 leading-relaxed">
+                    {parts.map((part, i) => {
+                        const imgMatch = part.match(/^\[\[IMAGE:(.+)\]\]$/);
+                        if (imgMatch) {
+                            return (
+                                <img
+                                    key={i}
+                                    src={imgMatch[1]}
+                                    alt="Email content"
+                                    className="max-w-full h-auto rounded-lg border border-white/10 shadow-sm my-2 inline-block"
+                                    loading="lazy"
+                                />
+                            );
+                        }
+                        return convertUrlsToLinks(part);
+                    })}
                 </div>
             );
         }
