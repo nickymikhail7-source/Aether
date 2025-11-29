@@ -299,19 +299,22 @@ export default function InboxPage() {
             {/* Sidebar */}
             <div className="w-[300px] bg-surface border-r border-border flex flex-col">
                 {/* Header */}
-                <div className="p-4 border-b border-border">
-                    <Link href="/" className="flex items-center space-x-3">
-                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent to-purple flex items-center justify-center">
-                            <span className="text-white text-lg font-bold">A</span>
+                <div className="p-6">
+                    <Link href="/" className="flex items-center space-x-3 group">
+                        <div className="relative w-8 h-8 flex items-center justify-center">
+                            <div className="absolute inset-0 bg-accent rounded-lg opacity-20 group-hover:opacity-40 blur-lg transition-opacity duration-500" />
+                            <div className="relative w-8 h-8 rounded-lg bg-gradient-to-br from-accent to-purple flex items-center justify-center shadow-lg shadow-accent/20">
+                                <span className="text-white text-lg font-bold">A</span>
+                            </div>
                         </div>
-                        <span className="text-text-primary font-semibold text-lg">Aether</span>
+                        <span className="text-text-primary font-semibold text-lg tracking-tight">Aether</span>
                     </Link>
                 </div>
 
                 {/* Views / Categories */}
-                <div className="px-3 py-4 space-y-1 border-b border-border">
+                <div className="px-3 space-y-1 mb-6">
                     <div className="px-3 mb-2">
-                        <h2 className="text-text-secondary text-xs font-semibold uppercase tracking-wider">
+                        <h2 className="text-text-muted text-[10px] font-bold uppercase tracking-widest opacity-60">
                             Views
                         </h2>
                     </div>
@@ -330,19 +333,22 @@ export default function InboxPage() {
                                 setSelectedCategory(category.id)
                                 setSelectedThreadId(null)
                             }}
-                            className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-between group ${selectedCategory === category.id
-                                ? 'bg-surface-hover text-text-primary border-l-2 border-accent'
-                                : 'text-text-secondary hover:bg-surface-hover hover:text-text-primary'
+                            className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-between group relative overflow-hidden ${selectedCategory === category.id
+                                ? 'bg-surface-hover text-text-primary shadow-lg shadow-black/20'
+                                : 'text-text-secondary hover:bg-surface-hover hover:text-text-primary hover:scale-[1.02]'
                                 }`}
                         >
-                            <div className="flex items-center space-x-3">
-                                <span className="w-5 text-center">{category.icon}</span>
+                            {selectedCategory === category.id && (
+                                <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-gradient-to-b from-accent to-purple" />
+                            )}
+                            <div className="flex items-center space-x-3 z-10">
+                                <span className={`w-5 text-center transition-transform duration-300 ${selectedCategory === category.id ? 'scale-110' : 'group-hover:scale-110'}`}>{category.icon}</span>
                                 <span>{category.label}</span>
                             </div>
                             {category.id === 'priority' && (
-                                <span className={`text-xs px-1.5 py-0.5 rounded-full ${selectedCategory === 'priority'
-                                    ? 'bg-accent text-white'
-                                    : 'bg-surface-hover text-text-secondary group-hover:bg-border'
+                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono z-10 ${selectedCategory === 'priority'
+                                    ? 'bg-gradient-to-r from-accent to-purple text-white shadow-md shadow-accent/20'
+                                    : 'bg-surface-elevated text-text-muted group-hover:text-text-secondary'
                                     }`}>
                                     {threads.filter(t => t.unread).length || ''}
                                 </span>
@@ -352,131 +358,82 @@ export default function InboxPage() {
                 </div>
 
                 {/* Conversations List */}
-                <div className="flex-1 overflow-y-auto">
+                <div className="flex-1 overflow-y-auto px-2 pb-4 space-y-1">
                     {loading ? (
-                        <div className="p-4 space-y-3">
+                        <div className="px-2 space-y-3 mt-4">
                             {[...Array(5)].map((_, i) => (
-                                <div key={i} className="animate-pulse">
-                                    <div className="flex items-start space-x-3 p-3">
-                                        <div className="w-10 h-10 bg-surface-hover rounded-full" />
-                                        <div className="flex-1 space-y-2">
-                                            <div className="h-4 bg-surface-hover rounded w-3/4" />
-                                            <div className="h-3 bg-surface-hover rounded w-full" />
-                                        </div>
+                                <div key={i} className="animate-pulse flex items-start space-x-3 p-2">
+                                    <div className="w-8 h-8 bg-surface-hover rounded-full" />
+                                    <div className="flex-1 space-y-2">
+                                        <div className="h-3 bg-surface-hover rounded w-3/4" />
+                                        <div className="h-2 bg-surface-hover rounded w-full" />
                                     </div>
                                 </div>
                             ))}
                         </div>
                     ) : error ? (
                         <div className="p-4">
-                            <div className="bg-red/10 border border-red/20 rounded-lg p-4">
+                            <div className="bg-red/10 border border-red/20 rounded-lg p-4 backdrop-blur-sm">
                                 <p className="text-red text-sm font-medium">Error loading emails</p>
                                 <p className="text-red/70 text-xs mt-1">{error}</p>
                                 <button
                                     onClick={fetchThreads}
-                                    className="mt-3 text-xs text-accent hover:underline"
+                                    className="mt-3 text-xs text-accent hover:text-white transition-colors"
                                 >
                                     Try again
                                 </button>
                             </div>
                         </div>
                     ) : threads.length === 0 ? (
-                        <div className="p-4 text-center">
+                        <div className="p-8 text-center">
                             <p className="text-text-muted text-sm">No emails found</p>
                         </div>
                     ) : (
-                        <>
-                            {priorityThreads.length > 0 && (
-                                <div className="mt-4">
-                                    <div className="px-4 py-2">
-                                        <h2 className="text-text-secondary text-xs font-semibold uppercase tracking-wider">
-                                            Priority
-                                        </h2>
+                        threads.map((thread, index) => (
+                            <button
+                                key={thread.id}
+                                onClick={() => setSelectedThreadId(thread.id)}
+                                style={{ animationDelay: `${index * 50}ms` }}
+                                className={`w-full text-left px-3 py-3 rounded-xl transition-all duration-200 group relative animate-in fade-in slide-in-from-bottom-2 ${selectedThreadId === thread.id
+                                    ? 'bg-surface-elevated shadow-lg shadow-black/20'
+                                    : 'hover:bg-surface-hover/50 hover:backdrop-blur-sm'
+                                    }`}
+                            >
+                                {selectedThreadId === thread.id && (
+                                    <div className="absolute left-0 top-3 bottom-3 w-[3px] rounded-r-full bg-gradient-to-b from-accent to-purple" />
+                                )}
+                                <div className="flex items-start space-x-3">
+                                    <div className={`relative w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 transition-transform duration-300 ${selectedThreadId === thread.id ? 'scale-110' : 'group-hover:scale-105'
+                                        } ${thread.unread ? 'bg-gradient-to-br from-accent to-purple p-[1px]' : 'bg-surface-hover'}`}>
+                                        <div className={`w-full h-full rounded-full flex items-center justify-center ${thread.unread ? 'bg-surface' : ''}`}>
+                                            <span className={`text-[10px] font-bold ${thread.unread ? 'text-white' : 'text-text-muted'}`}>
+                                                {getInitials(getPrimaryParticipant(thread.participants))}
+                                            </span>
+                                        </div>
                                     </div>
-                                    <div className="space-y-0.5">
-                                        {priorityThreads.map((thread) => (
-                                            <button
-                                                key={thread.id}
-                                                onClick={() => setSelectedThreadId(thread.id)}
-                                                className={`w-full text-left px-3 py-2.5 hover:bg-surface-hover transition-colors ${selectedThreadId === thread.id ? 'bg-surface-hover' : ''
-                                                    }`}
-                                            >
-                                                <div className="flex items-start space-x-3">
-                                                    <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                                        <span className="text-accent text-xs font-medium">
-                                                            {getInitials(getPrimaryParticipant(thread.participants))}
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="flex items-center justify-between mb-1">
-                                                            <span className="text-text-primary text-sm font-medium truncate">
-                                                                {getPrimaryParticipant(thread.participants).split('@')[0]}
-                                                            </span>
-                                                            <span className="text-text-muted text-xs flex-shrink-0 ml-2">
-                                                                {formatDate(thread.lastMessageDate)}
-                                                            </span>
-                                                        </div>
-                                                        <p className="text-text-primary text-sm font-medium truncate mb-0.5">
-                                                            {thread.subject}
-                                                        </p>
-                                                        <p className="text-text-secondary text-xs truncate">
-                                                            {thread.snippet}
-                                                        </p>
-                                                    </div>
-                                                    {thread.unread && (
-                                                        <div className="w-2 h-2 rounded-full bg-accent flex-shrink-0 mt-2" />
-                                                    )}
-                                                </div>
-                                            </button>
-                                        ))}
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center justify-between mb-0.5">
+                                            <span className={`text-sm truncate transition-colors ${thread.unread ? 'text-white font-medium' : 'text-text-secondary'
+                                                }`}>
+                                                {getPrimaryParticipant(thread.participants).split('@')[0]}
+                                            </span>
+                                            <span className="text-text-muted text-[10px] font-mono flex-shrink-0 ml-2 opacity-60">
+                                                {formatDate(thread.lastMessageDate)}
+                                            </span>
+                                        </div>
+                                        <p className={`text-sm truncate mb-0.5 ${thread.unread ? 'text-text-primary' : 'text-text-secondary'}`}>
+                                            {thread.subject}
+                                        </p>
+                                        <p className="text-text-muted text-xs truncate opacity-60 group-hover:opacity-80 transition-opacity">
+                                            {thread.snippet}
+                                        </p>
                                     </div>
+                                    {thread.unread && (
+                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-gradient-to-r from-accent to-purple shadow-lg shadow-accent/50" />
+                                    )}
                                 </div>
-                            )}
-
-                            {recentThreads.length > 0 && (
-                                <div className="mt-6">
-                                    <div className="px-4 py-2">
-                                        <h2 className="text-text-secondary text-xs font-semibold uppercase tracking-wider">
-                                            Recent
-                                        </h2>
-                                    </div>
-                                    <div className="space-y-0.5">
-                                        {recentThreads.map((thread) => (
-                                            <button
-                                                key={thread.id}
-                                                onClick={() => setSelectedThreadId(thread.id)}
-                                                className={`w-full text-left px-3 py-2.5 hover:bg-surface-hover transition-colors ${selectedThreadId === thread.id ? 'bg-surface-hover' : ''
-                                                    }`}
-                                            >
-                                                <div className="flex items-start space-x-3">
-                                                    <div className="w-10 h-10 rounded-full bg-border flex items-center justify-center flex-shrink-0 mt-0.5">
-                                                        <span className="text-text-muted text-xs font-medium">
-                                                            {getInitials(getPrimaryParticipant(thread.participants))}
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="flex items-center justify-between mb-1">
-                                                            <span className="text-text-secondary text-sm truncate">
-                                                                {getPrimaryParticipant(thread.participants).split('@')[0]}
-                                                            </span>
-                                                            <span className="text-text-muted text-xs flex-shrink-0 ml-2">
-                                                                {formatDate(thread.lastMessageDate)}
-                                                            </span>
-                                                        </div>
-                                                        <p className="text-text-secondary text-sm truncate mb-0.5">
-                                                            {thread.subject}
-                                                        </p>
-                                                        <p className="text-text-muted text-xs truncate">
-                                                            {thread.snippet}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                        </>
+                            </button>
+                        ))
                     )}
                 </div>
             </div>
@@ -486,85 +443,114 @@ export default function InboxPage() {
                 {selectedThreadId && threadDetail ? (
                     <>
                         {/* Conversation Header */}
-                        <div className="border-b border-border bg-surface p-6">
-                            <div className="flex items-start justify-between mb-2">
-                                <h1 className="text-text-primary text-2xl font-bold">
+                        <div className="border-b border-border bg-surface/50 backdrop-blur-xl p-6 sticky top-0 z-10">
+                            <div className="flex items-start justify-between mb-4">
+                                <h1 className="text-text-primary text-2xl font-bold tracking-tight leading-tight max-w-2xl">
                                     {threadDetail.thread.subject}
                                 </h1>
                                 <button
                                     onClick={summarizeWithAI}
                                     disabled={loadingAI}
-                                    className="px-4 py-2 bg-purple hover:bg-purple/90 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex items-center space-x-2"
+                                    className="group relative px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 disabled:opacity-50 overflow-hidden"
                                 >
-                                    {loadingAI ? (
-                                        <>
-                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                            <span>Analyzing...</span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                            </svg>
-                                            <span>Summarize with AI</span>
-                                        </>
-                                    )}
+                                    <div className="absolute inset-0 bg-gradient-to-r from-accent to-purple opacity-10 group-hover:opacity-20 transition-opacity" />
+                                    <div className="absolute inset-0 border border-accent/20 rounded-lg group-hover:border-accent/40 transition-colors" />
+                                    <div className="relative flex items-center space-x-2 text-accent group-hover:text-white transition-colors">
+                                        {loadingAI ? (
+                                            <>
+                                                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                                <span>Analyzing...</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <span className="text-lg">✨</span>
+                                                <span>Summarize with AI</span>
+                                            </>
+                                        )}
+                                    </div>
                                 </button>
                             </div>
-                            <div className="flex items-center space-x-4 text-sm text-text-secondary">
-                                <span>{threadDetail.thread.participants.length} participants</span>
-                                <span>•</span>
+                            <div className="flex items-center space-x-4 text-xs font-mono text-text-secondary">
+                                <div className="flex -space-x-2">
+                                    {threadDetail.thread.participants.slice(0, 3).map((p, i) => (
+                                        <div key={i} className="w-6 h-6 rounded-full bg-surface border border-surface flex items-center justify-center text-[8px] font-bold text-text-muted">
+                                            {getInitials(p)}
+                                        </div>
+                                    ))}
+                                    {threadDetail.thread.participants.length > 3 && (
+                                        <div className="w-6 h-6 rounded-full bg-surface-elevated border border-surface flex items-center justify-center text-[8px] font-bold text-text-muted">
+                                            +{threadDetail.thread.participants.length - 3}
+                                        </div>
+                                    )}
+                                </div>
                                 <span>{threadDetail.messages.length} messages</span>
+                                <span className="w-1 h-1 rounded-full bg-border-bright" />
+                                <span>Last reply {formatDate(threadDetail.thread.lastMessageDate)}</span>
                             </div>
                         </div>
 
                         {/* Messages */}
-                        <div ref={messageContainerRef} className="flex-1 overflow-y-auto p-6 space-y-6">
+                        <div ref={messageContainerRef} className="flex-1 overflow-y-auto p-8 space-y-8 scroll-smooth">
                             {/* AI Summary Card */}
                             {aiSummary && (
-                                <div className="bg-purple/10 border border-purple/20 rounded-xl p-4 space-y-3">
-                                    <div className="flex items-center space-x-2">
-                                        <svg className="w-5 h-5 text-purple" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                        </svg>
-                                        <h3 className="text-purple font-semibold">AI Summary</h3>
+                                <div className="glass rounded-2xl p-6 relative overflow-hidden group animate-in fade-in zoom-in-95 duration-500">
+                                    <div className="absolute inset-0 bg-gradient-to-br from-accent/5 to-purple/5 opacity-50" />
+                                    <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-accent/20 to-transparent" />
+                                    <div className="relative space-y-4">
+                                        <div className="flex items-center space-x-2">
+                                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent to-purple flex items-center justify-center shadow-lg shadow-accent/20">
+                                                <span className="text-white text-sm">✨</span>
+                                            </div>
+                                            <h3 className="text-text-primary font-semibold tracking-tight">AI Summary</h3>
+                                        </div>
+                                        <p className="text-text-secondary text-sm leading-relaxed font-light">
+                                            {aiSummary}
+                                        </p>
                                     </div>
-                                    <p className="text-text-primary text-sm leading-relaxed">
-                                        {aiSummary}
-                                    </p>
                                 </div>
                             )}
 
                             {/* Action Items Card */}
                             {actionItems.length > 0 && (
-                                <div className="bg-amber/10 border border-amber/20 rounded-xl p-4 space-y-3">
-                                    <div className="flex items-center space-x-2">
-                                        <svg className="w-5 h-5 text-amber" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                                        </svg>
-                                        <h3 className="text-amber font-semibold">Action Items</h3>
-                                    </div>
-                                    <div className="space-y-2">
-                                        {actionItems.map((item, index) => (
-                                            <label key={index} className="flex items-start space-x-3 cursor-pointer group">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={item.completed}
-                                                    onChange={() => toggleActionItem(index)}
-                                                    className="mt-0.5 w-4 h-4 rounded border-amber/40 text-amber focus:ring-amber focus:ring-offset-0"
-                                                />
-                                                <div className="flex-1">
-                                                    <p className={`text-sm ${item.completed ? 'line-through text-text-muted' : 'text-text-primary'}`}>
-                                                        {item.task}
-                                                    </p>
-                                                    {item.dueDate && (
-                                                        <p className="text-xs text-amber/70 mt-0.5">
-                                                            Due: {item.dueDate}
+                                <div className="glass rounded-2xl p-6 relative overflow-hidden group animate-in fade-in zoom-in-95 duration-500 delay-100">
+                                    <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 to-orange-500/5 opacity-50" />
+                                    <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-amber-500/20 to-transparent" />
+                                    <div className="relative space-y-4">
+                                        <div className="flex items-center space-x-2">
+                                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shadow-lg shadow-amber-500/20">
+                                                <span className="text-white text-sm">⚡</span>
+                                            </div>
+                                            <h3 className="text-text-primary font-semibold tracking-tight">Action Items</h3>
+                                        </div>
+                                        <div className="space-y-3">
+                                            {actionItems.map((item, index) => (
+                                                <label key={index} className="flex items-start space-x-3 cursor-pointer group/item">
+                                                    <div className="relative mt-0.5">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={item.completed}
+                                                            onChange={() => toggleActionItem(index)}
+                                                            className="peer sr-only"
+                                                        />
+                                                        <div className="w-5 h-5 rounded border border-border bg-surface-hover peer-checked:bg-gradient-to-br peer-checked:from-amber-500 peer-checked:to-orange-500 peer-checked:border-transparent transition-all duration-200 flex items-center justify-center">
+                                                            <svg className="w-3 h-3 text-white opacity-0 peer-checked:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                                            </svg>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <p className={`text-sm transition-all duration-200 ${item.completed ? 'line-through text-text-muted' : 'text-text-primary group-hover/item:text-white'}`}>
+                                                            {item.task}
                                                         </p>
-                                                    )}
-                                                </div>
-                                            </label>
-                                        ))}
+                                                        {item.dueDate && (
+                                                            <p className="text-xs text-amber-500/70 mt-1 font-mono">
+                                                                Due: {item.dueDate}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                </label>
+                                            ))}
+                                        </div>
                                     </div>
                                 </div>
                             )}
@@ -575,93 +561,94 @@ export default function InboxPage() {
                                 return (
                                     <div
                                         key={message.id}
-                                        className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}
+                                        className={`flex ${isMe ? 'justify-end' : 'justify-start'} group animate-in fade-in slide-in-from-bottom-4 duration-500`}
+                                        style={{ animationDelay: `${index * 50}ms` }}
                                     >
-                                        <div className={`flex items-start space-x-3 max-w-2xl ${isMe ? 'flex-row-reverse space-x-reverse' : ''}`}>
+                                        <div className={`flex items-end space-x-3 max-w-2xl ${isMe ? 'flex-row-reverse space-x-reverse' : ''}`}>
                                             {/* Avatar */}
-                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${isMe ? 'bg-accent/20' : 'bg-border'
-                                                }`}>
-                                                <span className={`text-xs font-medium ${isMe ? 'text-accent' : 'text-text-muted'
-                                                    }`}>
-                                                    {getInitials(message.from)}
-                                                </span>
-                                            </div>
-
-                                            {/* Message Bubble */}
-                                            <div>
-                                                <div className={`flex items-center space-x-2 mb-1 ${isMe ? 'flex-row-reverse space-x-reverse' : ''}`}>
-                                                    <span className="text-text-primary text-sm font-medium">
-                                                        {message.from}
-                                                    </span>
-                                                    <span className="text-text-muted text-xs">
-                                                        {formatMessageDate(message.date)}
+                                            {!isMe && (
+                                                <div className="w-8 h-8 rounded-full bg-surface-elevated flex items-center justify-center flex-shrink-0 mb-1 border border-border">
+                                                    <span className="text-[10px] font-bold text-text-secondary">
+                                                        {getInitials(message.from)}
                                                     </span>
                                                 </div>
+                                            )}
 
-                                                <div className={`rounded-2xl px-4 py-3 ${isMe
-                                                    ? 'bg-accent text-white'
-                                                    : 'bg-surface border border-border text-text-primary'
+                                            {/* Message Bubble */}
+                                            <div className="space-y-1">
+                                                {!isMe && (
+                                                    <div className="flex items-center space-x-2 ml-1">
+                                                        <span className="text-text-secondary text-xs font-medium">
+                                                            {message.from.split('<')[0].trim()}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                <div className={`rounded-2xl px-5 py-3.5 shadow-sm ${isMe
+                                                    ? 'bg-gradient-to-br from-accent to-purple text-white rounded-br-sm'
+                                                    : 'bg-surface-elevated border border-border text-text-primary rounded-bl-sm'
                                                     }`}>
-                                                    <div className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+                                                    <div className="text-sm leading-relaxed whitespace-pre-wrap break-words font-light">
                                                         {message.isHtml ? stripHtml(message.body) : message.body}
                                                     </div>
+                                                </div>
+                                                <div className={`text-[10px] text-text-muted font-mono opacity-0 group-hover:opacity-100 transition-opacity ${isMe ? 'text-right mr-1' : 'ml-1'}`}>
+                                                    {formatMessageDate(message.date)}
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                 )
                             })}
-                            <div ref={messagesEndRef} />
+                            <div ref={messagesEndRef} className="h-4" />
                         </div>
 
                         {/* Reply Input */}
-                        <div className="border-t border-border bg-surface p-4">
-                            <div className="flex items-start space-x-3 mb-3">
-                                <button
-                                    onClick={generateDraft}
-                                    disabled={loadingDraft}
-                                    className="px-4 py-2 bg-surface-hover hover:bg-border text-text-primary rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex items-center space-x-2 border border-border"
-                                >
-                                    {loadingDraft ? (
-                                        <>
-                                            <div className="w-4 h-4 border-2 border-text-muted/30 border-t-text-muted rounded-full animate-spin" />
-                                            <span>Generating...</span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                            </svg>
-                                            <span>Draft with AI</span>
-                                        </>
-                                    )}
-                                </button>
-                            </div>
-                            <div className="flex items-end space-x-3">
-                                <div className="flex-1 bg-background border border-border rounded-2xl px-4 py-3 focus-within:border-accent transition-colors">
-                                    <input
-                                        type="text"
-                                        value={replyText}
-                                        onChange={(e) => setReplyText(e.target.value)}
-                                        placeholder="Type a message..."
-                                        className="w-full bg-transparent text-text-primary placeholder-text-muted outline-none text-sm"
-                                    />
+                        <div className="p-6 bg-gradient-to-t from-background via-background to-transparent sticky bottom-0 z-10">
+                            <div className="glass rounded-2xl p-2 shadow-2xl shadow-black/50 backdrop-blur-xl border-border-bright">
+                                <div className="flex items-start space-x-2 mb-2 px-2 pt-2">
+                                    <button
+                                        onClick={generateDraft}
+                                        disabled={loadingDraft}
+                                        className="group flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-surface-hover/50 hover:bg-surface-hover transition-all duration-200 disabled:opacity-50"
+                                    >
+                                        {loadingDraft ? (
+                                            <div className="w-3 h-3 border-2 border-text-secondary border-t-transparent rounded-full animate-spin" />
+                                        ) : (
+                                            <span className="text-sm">✨</span>
+                                        )}
+                                        <span className="text-xs font-medium text-text-secondary group-hover:text-text-primary transition-colors">
+                                            {loadingDraft ? 'Drafting...' : 'Draft with AI'}
+                                        </span>
+                                    </button>
                                 </div>
+                                <div className="flex items-end space-x-2">
+                                    <div className="flex-1 bg-transparent px-4 py-2">
+                                        <input
+                                            type="text"
+                                            value={replyText}
+                                            onChange={(e) => setReplyText(e.target.value)}
+                                            placeholder="Type a message..."
+                                            className="w-full bg-transparent text-text-primary placeholder-text-muted outline-none text-sm font-light"
+                                        />
+                                    </div>
 
-                                <button
-                                    className="w-10 h-10 rounded-full bg-accent hover:bg-blue-600 flex items-center justify-center transition-colors flex-shrink-0"
-                                    title="Voice input"
-                                >
-                                    <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                                    </svg>
-                                </button>
+                                    <button
+                                        className="w-8 h-8 rounded-full bg-surface-hover hover:bg-surface-elevated flex items-center justify-center transition-colors flex-shrink-0 group"
+                                        title="Voice input"
+                                    >
+                                        <svg className="w-4 h-4 text-text-secondary group-hover:text-text-primary transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                                        </svg>
+                                    </button>
 
-                                <button
-                                    className="px-6 py-2.5 bg-accent hover:bg-blue-600 text-white rounded-full font-medium text-sm transition-colors flex-shrink-0"
-                                >
-                                    Send
-                                </button>
+                                    <button
+                                        className="w-8 h-8 rounded-full bg-gradient-to-br from-accent to-purple flex items-center justify-center transition-transform hover:scale-105 active:scale-95 flex-shrink-0 shadow-lg shadow-accent/20"
+                                    >
+                                        <svg className="w-4 h-4 text-white ml-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                                        </svg>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </>
