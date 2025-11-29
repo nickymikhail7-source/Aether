@@ -29,6 +29,21 @@ export function formatEmailContent(body: string): React.ReactNode[] {
         const trimmed = para.trim();
         if (!trimmed) return null;
 
+        // Check if it's an image marker
+        const imageMatch = trimmed.match(/^\[\[IMAGE:(.+)\]\]$/);
+        if (imageMatch) {
+            return (
+                <div key={index} className="my-4">
+                    <img
+                        src={imageMatch[1]}
+                        alt="Email content"
+                        className="max-w-full h-auto rounded-lg border border-white/10 shadow-sm"
+                        loading="lazy"
+                    />
+                </div>
+            );
+        }
+
         // Check if it's a heading (numbered like "5. The Improvement")
         if (/^\d+\.\s+[A-Z]/.test(trimmed)) {
             return (

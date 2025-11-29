@@ -229,6 +229,9 @@ export default function InboxPage() {
         return html
             .replace(/<style[^>]*>.*?<\/style>/gi, '')
             .replace(/<script[^>]*>.*?<\/script>/gi, '')
+            // Preserve images as markers
+            .replace(/<img[^>]+src="([^">]+)"[^>]*>/gi, '[[IMAGE:$1]]')
+            .replace(/<img[^>]+src='([^'>]+)'[^>]*>/gi, '[[IMAGE:$1]]')
             .replace(/<[^>]+>/g, '')
             .replace(/&nbsp;/g, ' ')
             .replace(/&amp;/g, '&')
