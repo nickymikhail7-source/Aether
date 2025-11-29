@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
 
         // Get category from query params
         const searchParams = request.nextUrl.searchParams
-        const category = searchParams.get('category') || 'focus'
+        const category = searchParams.get('category') || 'priority'
 
         // Fetch Gmail threads
         const threads = await listThreads(session.accessToken as string, 20, category)

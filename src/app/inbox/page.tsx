@@ -51,7 +51,7 @@ export default function InboxPage() {
     const [loadingAI, setLoadingAI] = useState(false)
     const [loadingDraft, setLoadingDraft] = useState(false)
     const [replyText, setReplyText] = useState('')
-    const [selectedCategory, setSelectedCategory] = useState('focus')
+    const [selectedCategory, setSelectedCategory] = useState('priority')
     const messagesEndRef = useRef<HTMLDivElement>(null)
     const messageContainerRef = useRef<HTMLDivElement>(null)
 
@@ -316,7 +316,8 @@ export default function InboxPage() {
                         </h2>
                     </div>
                     {[
-                        { id: 'focus', label: 'Focus', icon: '⚡' },
+                        { id: 'gatekeeper', label: 'Gatekeeper', icon: '🛡️' },
+                        { id: 'priority', label: 'Priority', icon: '⚡' },
                         { id: 'people', label: 'People', icon: '👤' },
                         { id: 'newsletters', label: 'Newsletters', icon: '📰' },
                         { id: 'notifications', label: 'Notifications', icon: '🔔' },
@@ -338,8 +339,8 @@ export default function InboxPage() {
                                 <span className="w-5 text-center">{category.icon}</span>
                                 <span>{category.label}</span>
                             </div>
-                            {category.id === 'focus' && (
-                                <span className={`text-xs px-1.5 py-0.5 rounded-full ${selectedCategory === 'focus'
+                            {category.id === 'priority' && (
+                                <span className={`text-xs px-1.5 py-0.5 rounded-full ${selectedCategory === 'priority'
                                     ? 'bg-accent text-white'
                                     : 'bg-surface-hover text-text-secondary group-hover:bg-border'
                                     }`}>

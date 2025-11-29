@@ -44,7 +44,8 @@ export async function listThreads(
 
     // Map categories to Gmail search queries
     const queries: Record<string, string> = {
-        focus: 'is:inbox is:unread category:primary',
+        priority: 'is:inbox is:unread category:primary',
+        gatekeeper: 'is:inbox is:unread -category:primary -category:promotions -category:updates',
         people: 'is:inbox category:primary',
         newsletters: 'is:inbox (category:promotions OR category:updates)',
         notifications: 'is:inbox category:updates',
@@ -52,7 +53,7 @@ export async function listThreads(
         drafts: 'is:draft',
     }
 
-    const q = queries[category] || queries.focus
+    const q = queries[category] || queries.priority
 
     try {
         // Get list of thread IDs
