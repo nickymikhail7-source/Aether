@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { useSession } from 'next-auth/react'
+import { useSession, signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
@@ -55,8 +55,12 @@ export default function InboxPage() {
     const messageContainerRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
-        if (status === 'unauthenticated') {
-            router.push('/')
+        if (status === 'unauthenticated' || session?.error === "RefreshAccessTokenError") {
+            if (session?.error === "RefreshAccessTokenError") {
+                signIn('google')
+            } else {
+                router.push('/')
+            }
             return
         }
 
