@@ -52,6 +52,7 @@ export default function InboxPage() {
     const [loadingDraft, setLoadingDraft] = useState(false)
     const [replyText, setReplyText] = useState('')
     const messagesEndRef = useRef<HTMLDivElement>(null)
+    const messageContainerRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
         if (status === 'unauthenticated') {
@@ -71,11 +72,18 @@ export default function InboxPage() {
     }, [selectedThreadId])
 
     useEffect(() => {
-        // Scroll to bottom when messages load
-        if (threadDetail?.messages) {
+        // Scroll to bottom when thread loads
+        if (threadDetail) {
             messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
         }
     }, [threadDetail])
+
+    // Scroll to top when AI summary is generated
+    useEffect(() => {
+        if (aiSummary && messageContainerRef.current) {
+            messageContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' })
+        }
+    }, [aiSummary])
 
     async function fetchThreads() {
         try {
@@ -461,7 +469,7 @@ export default function InboxPage() {
                         </div>
 
                         {/* Messages */}
-                        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                        <div ref={messageContainerRef} className="flex-1 overflow-y-auto p-6 space-y-6">
                             {/* AI Summary Card */}
                             {aiSummary && (
                                 <div className="bg-purple/10 border border-purple/20 rounded-xl p-4 space-y-3">
