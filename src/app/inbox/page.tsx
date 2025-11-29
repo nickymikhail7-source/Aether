@@ -620,9 +620,11 @@ export default function InboxPage() {
                                                 <div className={`flex-1 ${isMe ? 'text-right' : ''}`}>
                                                     <div className={`flex items-center gap-2 ${isMe ? 'justify-end' : ''}`}>
                                                         <span className="font-semibold text-white">{senderName}</span>
-                                                        <span className="text-sm text-white/40">{senderEmail}</span>
+                                                        {senderEmail && senderEmail !== senderName && (
+                                                            <span className="text-sm text-text-secondary font-mono opacity-80">{senderEmail}</span>
+                                                        )}
                                                     </div>
-                                                    <span className="text-xs text-white/30">{formatMessageDate(message.date)}</span>
+                                                    <span className="text-xs text-white/40 font-medium">{formatMessageDate(message.date)}</span>
                                                 </div>
                                             </div>
 
