@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useSession, signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { cleanEmailContent, extractSenderInfo, formatMessageDate, extractCalendarDetails } from '@/lib/email-utils'
 
 interface GmailThread {
     id: string
@@ -283,43 +284,6 @@ export default function InboxPage() {
             .trim()
     }
 
-    function cleanEmailContent(body: string): string {
-        return body
-            // Remove quoted reply lines (starting with >)
-            .replace(/^>.*$/gm, '')
-            // Remove multiple blank lines
-            .replace(/\n{3,}/g, '\n\n')
-            // Convert HTML entities
-            .replace(/&#8208;/g, '-')
-            .replace(/&amp;/g, '&')
-            .replace(/&lt;/g, '<')
-            .replace(/&gt;/g, '>')
-            .replace(/&quot;/g, '"')
-            // Remove raw URLs in angle brackets
-            .replace(/<https?:\/\/[^>]+>/g, '')
-            // Trim whitespace
-            .trim();
-    }
-
-    function isCalendarInvite(subject: string, body: string): boolean {
-        return body.includes('calendar.google.com/calendar/event') ||
-            (body.includes('Yes') && body.includes('No') && body.includes('Maybe') && body.includes('invitation'));
-    }
-
-    function extractEventDetails(subject: string, body: string) {
-        // Simple extraction logic
-        const title = subject.replace(/^Invitation: /, '').replace(/^Updated invitation: /, '');
-        // Try to find date/time patterns if possible, otherwise generic
-        const dateMatch = body.match(/When: (.*?)\n/);
-        const locationMatch = body.match(/Where: (.*?)\n/);
-
-        return {
-            title,
-            time: dateMatch ? dateMatch[1] : 'Check details',
-            location: locationMatch ? locationMatch[1] : 'Online / See details'
-        };
-    }
-
     const priorityThreads = threads.filter(t => t.unread).slice(0, 5)
     const recentThreads = threads.filter(t => !t.unread).slice(0, 15)
 
@@ -594,13 +558,10 @@ export default function InboxPage() {
 
                             {threadDetail.messages.map((message, index) => {
                                 const isMe = isMyMessage(message.from)
-                                const senderName = message.from.split('<')[0].trim().replace(/"/g, '')
-                                const senderEmail = message.from.match(/<([^>]+)>/)?.[1] || message.from
-                                const senderInitials = getInitials(senderName)
+                                const { name, email, initials } = extractSenderInfo(message.from)
                                 const cleanedBody = message.isHtml ? stripHtml(message.body) : message.body
                                 const finalBody = cleanEmailContent(cleanedBody)
-                                const isInvite = isCalendarInvite(message.subject, cleanedBody)
-                                const eventDetails = isInvite ? extractEventDetails(message.subject, cleanedBody) : null
+                                const calendarDetails = extractCalendarDetails(message.subject || '', cleanedBody)
 
                                 return (
                                     <div
@@ -608,70 +569,67 @@ export default function InboxPage() {
                                         className={`group animate-in fade-in slide-in-from-bottom-4 duration-500`}
                                         style={{ animationDelay: `${index * 50}ms` }}
                                     >
-                                        <div className={`message max-w-3xl mx-auto ${isMe ? 'ml-auto' : ''}`}>
-                                            {/* Message Header */}
-                                            <div className={`flex items-center gap-3 mb-3 ${isMe ? 'flex-row-reverse' : ''}`}>
-                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-medium shadow-lg ${isMe
+                                        <div className={`flex gap-3 ${isMe ? 'flex-row-reverse' : ''}`}>
+                                            {/* Avatar */}
+                                            <div className="flex-shrink-0">
+                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-medium shadow-lg ${isMe
                                                     ? 'bg-gradient-to-br from-accent to-purple'
-                                                    : 'bg-surface-elevated border border-border'
+                                                    : 'bg-gradient-to-br from-indigo-500 to-purple-600'
                                                     }`}>
-                                                    {senderInitials}
-                                                </div>
-                                                <div className={`flex-1 ${isMe ? 'text-right' : ''}`}>
-                                                    <div className={`flex items-center gap-2 ${isMe ? 'justify-end' : ''}`}>
-                                                        <span className="font-semibold text-white">{senderName}</span>
-                                                        {senderEmail && senderEmail !== senderName && (
-                                                            <span className="text-sm text-text-secondary font-mono opacity-80">{senderEmail}</span>
-                                                        )}
-                                                    </div>
-                                                    <span className="text-xs text-white/40 font-medium">{formatMessageDate(message.date)}</span>
+                                                    {initials}
                                                 </div>
                                             </div>
 
-                                            {/* Message Body */}
-                                            <div className={`pl-13 text-white/80 leading-relaxed ${isMe ? 'pr-13 pl-0 text-right' : 'pl-13'}`}>
-                                                {isInvite && eventDetails ? (
-                                                    <div className="glass rounded-xl p-5 mb-4 border-l-4 border-l-accent max-w-md">
-                                                        <div className="flex items-center gap-3 mb-3">
-                                                            <div className="w-10 h-10 rounded-lg bg-surface-elevated flex items-center justify-center text-xl">
-                                                                📅
-                                                            </div>
-                                                            <div>
-                                                                <h3 className="font-semibold text-white">{eventDetails.title}</h3>
-                                                                <p className="text-xs text-white/50">Calendar Invitation</p>
-                                                            </div>
+                                            {/* Content */}
+                                            <div className={`flex-1 max-w-[85%] ${isMe ? 'items-end' : 'items-start'}`}>
+                                                {/* Header */}
+                                                <div className={`flex items-center gap-2 mb-1 ${isMe ? 'justify-end' : ''}`}>
+                                                    <span className="font-semibold text-white">{name}</span>
+                                                    <span className="text-xs text-white/40">({email})</span>
+                                                    <span className="text-xs text-white/30">{formatMessageDate(message.date)}</span>
+                                                </div>
+
+                                                {/* Calendar Invite Card */}
+                                                {calendarDetails && (
+                                                    <div className="mb-3 p-4 rounded-xl bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border border-white/10">
+                                                        <div className="flex items-center gap-2 mb-2">
+                                                            <span className="text-lg">📅</span>
+                                                            <span className="font-semibold text-white">Calendar Invite</span>
                                                         </div>
-                                                        <div className="space-y-2 mb-4 text-sm">
-                                                            <div className="flex items-start gap-2">
-                                                                <span className="text-white/40 w-12">When:</span>
-                                                                <span className="text-white/90">{eventDetails.time}</span>
+                                                        <p className="text-white font-medium">{calendarDetails.title}</p>
+                                                        {calendarDetails.dateTime && (
+                                                            <p className="text-white/60 text-sm mt-1">{calendarDetails.dateTime}</p>
+                                                        )}
+                                                        {calendarDetails.hasRSVP && (
+                                                            <div className="flex gap-2 mt-3">
+                                                                <button className="px-3 py-1.5 rounded-lg bg-green-500/20 text-green-400 text-sm font-medium hover:bg-green-500/30 transition">
+                                                                    Accept
+                                                                </button>
+                                                                <button className="px-3 py-1.5 rounded-lg bg-red-500/20 text-red-400 text-sm font-medium hover:bg-red-500/30 transition">
+                                                                    Decline
+                                                                </button>
+                                                                <button className="px-3 py-1.5 rounded-lg bg-yellow-500/20 text-yellow-400 text-sm font-medium hover:bg-yellow-500/30 transition">
+                                                                    Maybe
+                                                                </button>
                                                             </div>
-                                                            <div className="flex items-start gap-2">
-                                                                <span className="text-white/40 w-12">Where:</span>
-                                                                <span className="text-white/90">{eventDetails.location}</span>
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex gap-2">
-                                                            <button className="px-3 py-1.5 rounded-md bg-accent/20 text-accent hover:bg-accent/30 text-xs font-medium transition-colors">Accept</button>
-                                                            <button className="px-3 py-1.5 rounded-md bg-white/5 text-white/70 hover:bg-white/10 text-xs font-medium transition-colors">Maybe</button>
-                                                            <button className="px-3 py-1.5 rounded-md bg-white/5 text-white/70 hover:bg-white/10 text-xs font-medium transition-colors">Decline</button>
-                                                        </div>
-                                                    </div>
-                                                ) : (
-                                                    <div className={`rounded-2xl px-5 py-3.5 shadow-sm inline-block text-left ${isMe
-                                                        ? 'bg-gradient-to-br from-accent/10 to-purple/10 border border-accent/20 text-white rounded-tr-sm'
-                                                        : 'bg-surface-elevated border border-border text-text-primary rounded-tl-sm'
-                                                        }`}>
-                                                        <div className="whitespace-pre-wrap break-words font-light">
-                                                            {finalBody.split(/(\s+)/).map((part, i) => {
-                                                                if (part.match(/^https?:\/\//)) {
-                                                                    return <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">{part}</a>
-                                                                }
-                                                                return part
-                                                            })}
-                                                        </div>
+                                                        )}
                                                     </div>
                                                 )}
+
+                                                {/* Message Body */}
+                                                <div className={`p-4 rounded-2xl shadow-sm ${isMe
+                                                    ? 'bg-gradient-to-br from-accent to-purple text-white rounded-tr-sm'
+                                                    : 'bg-surface-elevated border border-border text-text-primary rounded-tl-sm'
+                                                    }`}>
+                                                    <div className="whitespace-pre-wrap break-words font-light leading-relaxed">
+                                                        {finalBody.split(/(\s+)/).map((part, i) => {
+                                                            if (part.match(/^https?:\/\//)) {
+                                                                return <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline font-medium">{part}</a>
+                                                            }
+                                                            return part
+                                                        })}
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
