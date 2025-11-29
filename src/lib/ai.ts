@@ -32,7 +32,7 @@ ${threadContext}
 Provide a concise 2-3 sentence summary of this email thread. Focus on the main topic, key points, and current status. Be clear and actionable.`
 
         const message = await anthropic.messages.create({
-            model: 'claude-sonnet-4.5',
+            model: 'claude-sonnet-4-5-20250929',
             max_tokens: 200,
             messages: [
                 {
@@ -85,7 +85,7 @@ Return ONLY a JSON array in this exact format, with no additional text:
 If no action items are found, return an empty array: []`
 
         const message = await anthropic.messages.create({
-            model: 'claude-sonnet-4.5',
+            model: 'claude-sonnet-4-5-20250929',
             max_tokens: 500,
             messages: [
                 {
@@ -149,7 +149,7 @@ Generate a professional, contextual reply to the most recent message from ${last
 Generate only the email body text, nothing else.`
 
         const message = await anthropic.messages.create({
-            model: 'claude-sonnet-4.5',
+            model: 'claude-sonnet-4-5-20250929',
             max_tokens: 400,
             messages: [
                 {
