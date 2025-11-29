@@ -31,6 +31,12 @@ interface ThreadDetail {
     messages: GmailMessage[]
 }
 
+interface ActionItem {
+    task: string
+    dueDate?: string
+    completed: boolean
+}
+
 export default function InboxPage() {
     const { data: session, status } = useSession()
     const router = useRouter()
@@ -40,6 +46,11 @@ export default function InboxPage() {
     const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null)
     const [threadDetail, setThreadDetail] = useState<ThreadDetail | null>(null)
     const [loadingThread, setLoadingThread] = useState(false)
+    const [aiSummary, setAiSummary] = useState<string | null>(null)
+    const [actionItems, setActionItems] = useState<ActionItem[]>([])
+    const [loadingAI, setLoadingAI] = useState(false)
+    const [loadingDraft, setLoadingDraft] = useState(false)
+    const [replyText, setReplyText] = useState('')
     const messagesEndRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
@@ -91,6 +102,9 @@ export default function InboxPage() {
         try {
             setLoadingThread(true)
             setThreadDetail(null)
+            setAiSummary(null)
+            setActionItems([])
+            setReplyText('')
 
             const response = await fetch(`/api/gmail/threads/${threadId}`)
 
@@ -106,6 +120,91 @@ export default function InboxPage() {
         } finally {
             setLoadingThread(false)
         }
+    }
+
+    async function summarizeWithAI() {
+        if (!threadDetail) return
+
+        try {
+            setLoadingAI(true)
+            const response = await fetch('/api/ai/summarize', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    subject: threadDetail.thread.subject,
+                    messages: threadDetail.messages.map(m => ({
+                        from: m.from,
+                        body: m.isHtml ? stripHtml(m.body) : m.body,
+                        date: m.date,
+                    })),
+                }),
+            })
+
+            if (response.ok) {
+                const data = await response.json()
+                setAiSummary(data.summary)
+
+                // Also fetch action items
+                const actionsResponse = await fetch('/api/ai/actions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        subject: threadDetail.thread.subject,
+                        messages: threadDetail.messages.map(m => ({
+                            from: m.from,
+                            body: m.isHtml ? stripHtml(m.body) : m.body,
+                            date: m.date,
+                        })),
+                    }),
+                })
+
+                if (actionsResponse.ok) {
+                    const actionsData = await actionsResponse.json()
+                    setActionItems(actionsData.actionItems || [])
+                }
+            }
+        } catch (error) {
+            console.error('Error summarizing:', error)
+        } finally {
+            setLoadingAI(false)
+        }
+    }
+
+    async function generateDraft() {
+        if (!threadDetail) return
+
+        try {
+            setLoadingDraft(true)
+            const response = await fetch('/api/ai/draft', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    subject: threadDetail.thread.subject,
+                    messages: threadDetail.messages.map(m => ({
+                        from: m.from,
+                        body: m.isHtml ? stripHtml(m.body) : m.body,
+                        date: m.date,
+                    })),
+                }),
+            })
+
+            if (response.ok) {
+                const data = await response.json()
+                setReplyText(data.draft)
+            }
+        } catch (error) {
+            console.error('Error generating draft:', error)
+        } finally {
+            setLoadingDraft(false)
+        }
+    }
+
+    function toggleActionItem(index: number) {
+        setActionItems(items =>
+            items.map((item, i) =>
+                i === index ? { ...item, completed: !item.completed } : item
+            )
+        )
     }
 
     function formatDate(dateStr: string): string {
@@ -330,9 +429,30 @@ export default function InboxPage() {
                     <>
                         {/* Conversation Header */}
                         <div className="border-b border-border bg-surface p-6">
-                            <h1 className="text-text-primary text-2xl font-bold mb-2">
-                                {threadDetail.thread.subject}
-                            </h1>
+                            <div className="flex items-start justify-between mb-2">
+                                <h1 className="text-text-primary text-2xl font-bold">
+                                    {threadDetail.thread.subject}
+                                </h1>
+                                <button
+                                    onClick={summarizeWithAI}
+                                    disabled={loadingAI}
+                                    className="px-4 py-2 bg-purple hover:bg-purple/90 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex items-center space-x-2"
+                                >
+                                    {loadingAI ? (
+                                        <>
+                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                            <span>Analyzing...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                            </svg>
+                                            <span>Summarize with AI</span>
+                                        </>
+                                    )}
+                                </button>
+                            </div>
                             <div className="flex items-center space-x-4 text-sm text-text-secondary">
                                 <span>{threadDetail.thread.participants.length} participants</span>
                                 <span>•</span>
@@ -342,6 +462,55 @@ export default function InboxPage() {
 
                         {/* Messages */}
                         <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                            {/* AI Summary Card */}
+                            {aiSummary && (
+                                <div className="bg-purple/10 border border-purple/20 rounded-xl p-4 space-y-3">
+                                    <div className="flex items-center space-x-2">
+                                        <svg className="w-5 h-5 text-purple" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                        </svg>
+                                        <h3 className="text-purple font-semibold">AI Summary</h3>
+                                    </div>
+                                    <p className="text-text-primary text-sm leading-relaxed">
+                                        {aiSummary}
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Action Items Card */}
+                            {actionItems.length > 0 && (
+                                <div className="bg-amber/10 border border-amber/20 rounded-xl p-4 space-y-3">
+                                    <div className="flex items-center space-x-2">
+                                        <svg className="w-5 h-5 text-amber" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                        </svg>
+                                        <h3 className="text-amber font-semibold">Action Items</h3>
+                                    </div>
+                                    <div className="space-y-2">
+                                        {actionItems.map((item, index) => (
+                                            <label key={index} className="flex items-start space-x-3 cursor-pointer group">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={item.completed}
+                                                    onChange={() => toggleActionItem(index)}
+                                                    className="mt-0.5 w-4 h-4 rounded border-amber/40 text-amber focus:ring-amber focus:ring-offset-0"
+                                                />
+                                                <div className="flex-1">
+                                                    <p className={`text-sm ${item.completed ? 'line-through text-text-muted' : 'text-text-primary'}`}>
+                                                        {item.task}
+                                                    </p>
+                                                    {item.dueDate && (
+                                                        <p className="text-xs text-amber/70 mt-0.5">
+                                                            Due: {item.dueDate}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
                             {threadDetail.messages.map((message, index) => {
                                 const isMe = isMyMessage(message.from)
 
@@ -372,8 +541,8 @@ export default function InboxPage() {
                                                 </div>
 
                                                 <div className={`rounded-2xl px-4 py-3 ${isMe
-                                                        ? 'bg-accent text-white'
-                                                        : 'bg-surface border border-border text-text-primary'
+                                                    ? 'bg-accent text-white'
+                                                    : 'bg-surface border border-border text-text-primary'
                                                     }`}>
                                                     <div className="text-sm leading-relaxed whitespace-pre-wrap break-words">
                                                         {message.isHtml ? stripHtml(message.body) : message.body}
@@ -389,10 +558,33 @@ export default function InboxPage() {
 
                         {/* Reply Input */}
                         <div className="border-t border-border bg-surface p-4">
+                            <div className="flex items-start space-x-3 mb-3">
+                                <button
+                                    onClick={generateDraft}
+                                    disabled={loadingDraft}
+                                    className="px-4 py-2 bg-surface-hover hover:bg-border text-text-primary rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex items-center space-x-2 border border-border"
+                                >
+                                    {loadingDraft ? (
+                                        <>
+                                            <div className="w-4 h-4 border-2 border-text-muted/30 border-t-text-muted rounded-full animate-spin" />
+                                            <span>Generating...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                            </svg>
+                                            <span>Draft with AI</span>
+                                        </>
+                                    )}
+                                </button>
+                            </div>
                             <div className="flex items-end space-x-3">
                                 <div className="flex-1 bg-background border border-border rounded-2xl px-4 py-3 focus-within:border-accent transition-colors">
                                     <input
                                         type="text"
+                                        value={replyText}
+                                        onChange={(e) => setReplyText(e.target.value)}
                                         placeholder="Type a message..."
                                         className="w-full bg-transparent text-text-primary placeholder-text-muted outline-none text-sm"
                                     />
