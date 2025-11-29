@@ -32,7 +32,7 @@ ${threadContext}
 Provide a concise 2-3 sentence summary of this email thread. Focus on the main topic, key points, and current status. Be clear and actionable.`
 
         const message = await anthropic.messages.create({
-            model: 'claude-3-5-sonnet-20241022',
+            model: 'claude-3-5-sonnet-latest',
             max_tokens: 200,
             messages: [
                 {
@@ -44,9 +44,12 @@ Provide a concise 2-3 sentence summary of this email thread. Focus on the main t
 
         const textContent = message.content.find((block) => block.type === 'text')
         return textContent && 'text' in textContent ? textContent.text : 'Unable to generate summary'
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error summarizing thread:', error)
-        throw new Error('Failed to generate summary')
+        console.error('Error message:', error.message)
+        console.error('Error status:', error.status)
+        console.error('Error details:', JSON.stringify(error, null, 2))
+        throw error // Throw the original error, not a generic one
     }
 }
 
@@ -82,7 +85,7 @@ Return ONLY a JSON array in this exact format, with no additional text:
 If no action items are found, return an empty array: []`
 
         const message = await anthropic.messages.create({
-            model: 'claude-3-5-sonnet-20241022',
+            model: 'claude-3-5-sonnet-latest',
             max_tokens: 500,
             messages: [
                 {
@@ -146,7 +149,7 @@ Generate a professional, contextual reply to the most recent message from ${last
 Generate only the email body text, nothing else.`
 
         const message = await anthropic.messages.create({
-            model: 'claude-3-5-sonnet-20241022',
+            model: 'claude-3-5-sonnet-latest',
             max_tokens: 400,
             messages: [
                 {
