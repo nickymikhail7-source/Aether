@@ -4,7 +4,8 @@ import { useEffect, useState, useRef } from 'react'
 import { useSession, signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { cleanEmailContent, extractSenderInfo, formatMessageDate, extractCalendarDetails } from '@/lib/email-utils'
+import { formatEmailContent, extractSenderInfo, formatDate } from '@/lib/email-formatter'
+import { extractCalendarDetails } from '@/lib/email-utils'
 
 interface GmailThread {
     id: string
@@ -223,53 +224,6 @@ export default function InboxPage() {
         )
     }
 
-    function formatDate(dateStr: string): string {
-        const date = new Date(dateStr)
-        const now = new Date()
-        const diffMs = now.getTime() - date.getTime()
-        const diffMins = Math.floor(diffMs / 60000)
-        const diffHours = Math.floor(diffMs / 3600000)
-        const diffDays = Math.floor(diffMs / 86400000)
-
-        if (diffMins < 1) return 'Just now'
-        if (diffMins < 60) return `${diffMins}m ago`
-        if (diffHours < 24) return `${diffHours}h ago`
-        if (diffDays < 7) return `${diffDays}d ago`
-
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-    }
-
-    function formatMessageDate(dateStr: string): string {
-        const date = new Date(dateStr)
-        const now = new Date()
-        const isToday = date.toDateString() === now.toDateString()
-
-        if (isToday) {
-            return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
-        }
-
-        return date.toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            hour: 'numeric',
-            minute: '2-digit'
-        })
-    }
-
-    function getInitials(email: string): string {
-        const name = email.split('@')[0]
-        return name.substring(0, 2).toUpperCase()
-    }
-
-    function getPrimaryParticipant(participants: string[]): string {
-        const others = participants.filter(p => p !== session?.user?.email)
-        return others[0] || participants[0] || 'Unknown'
-    }
-
-    function isMyMessage(from: string): boolean {
-        return from.toLowerCase().includes(session?.user?.email?.toLowerCase() || '')
-    }
-
     function stripHtml(html: string): string {
         // Basic HTML stripping for preview (production would use DOMPurify)
         return html
@@ -408,7 +362,12 @@ export default function InboxPage() {
                                         } ${thread.unread ? 'bg-gradient-to-br from-accent to-purple p-[1px]' : 'bg-surface-hover'}`}>
                                         <div className={`w-full h-full rounded-full flex items-center justify-center ${thread.unread ? 'bg-surface' : ''}`}>
                                             <span className={`text-[10px] font-bold ${thread.unread ? 'text-white' : 'text-text-muted'}`}>
-                                                {getInitials(getPrimaryParticipant(thread.participants))}
+                                                <span className={`text-[10px] font-bold ${thread.unread ? 'text-white' : 'text-text-muted'}`}>
+                                                    {(() => {
+                                                        const primary = thread.participants.filter(p => p !== session?.user?.email)[0] || thread.participants[0] || 'Unknown'
+                                                        return primary.split('@')[0].substring(0, 2).toUpperCase()
+                                                    })()}
+                                                </span>
                                             </span>
                                         </div>
                                     </div>
@@ -416,7 +375,10 @@ export default function InboxPage() {
                                         <div className="flex items-center justify-between mb-0.5">
                                             <span className={`text-sm truncate transition-colors ${thread.unread ? 'text-white font-medium' : 'text-text-secondary'
                                                 }`}>
-                                                {getPrimaryParticipant(thread.participants).split('@')[0]}
+                                                {(() => {
+                                                    const primary = thread.participants.filter(p => p !== session?.user?.email)[0] || thread.participants[0] || 'Unknown'
+                                                    return primary.split('@')[0]
+                                                })()}
                                             </span>
                                             <span className="text-text-muted text-[10px] font-mono flex-shrink-0 ml-2 opacity-60">
                                                 {formatDate(thread.lastMessageDate)}
@@ -475,7 +437,9 @@ export default function InboxPage() {
                                 <div className="flex -space-x-2">
                                     {threadDetail.thread.participants.slice(0, 3).map((p, i) => (
                                         <div key={i} className="w-6 h-6 rounded-full bg-surface border border-surface flex items-center justify-center text-[8px] font-bold text-text-muted">
-                                            {getInitials(p)}
+                                            <div key={i} className="w-6 h-6 rounded-full bg-surface border border-surface flex items-center justify-center text-[8px] font-bold text-text-muted">
+                                                {p.split('@')[0].substring(0, 2).toUpperCase()}
+                                            </div>
                                         </div>
                                     ))}
                                     {threadDetail.thread.participants.length > 3 && (
@@ -557,10 +521,10 @@ export default function InboxPage() {
                             )}
 
                             {threadDetail.messages.map((message, index) => {
-                                const isMe = isMyMessage(message.from)
                                 const { name, email, initials } = extractSenderInfo(message.from)
+                                const isMe = message.from.toLowerCase().includes(session?.user?.email?.toLowerCase() || '')
                                 const cleanedBody = message.isHtml ? stripHtml(message.body) : message.body
-                                const finalBody = cleanEmailContent(cleanedBody)
+                                const formattedContent = formatEmailContent(cleanedBody)
                                 const calendarDetails = extractCalendarDetails(message.subject || '', cleanedBody)
 
                                 return (
@@ -569,67 +533,52 @@ export default function InboxPage() {
                                         className={`group animate-in fade-in slide-in-from-bottom-4 duration-500`}
                                         style={{ animationDelay: `${index * 50}ms` }}
                                     >
-                                        <div className={`flex gap-3 ${isMe ? 'flex-row-reverse' : ''}`}>
-                                            {/* Avatar */}
-                                            <div className="flex-shrink-0">
-                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-medium shadow-lg ${isMe
-                                                    ? 'bg-gradient-to-br from-accent to-purple'
-                                                    : 'bg-gradient-to-br from-indigo-500 to-purple-600'
-                                                    }`}>
-                                                    {initials}
-                                                </div>
+                                        {/* Sender Header */}
+                                        <div className="flex items-center gap-3 mb-3">
+                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-semibold shadow-lg ${isMe
+                                                ? 'bg-gradient-to-br from-accent to-purple'
+                                                : 'bg-gradient-to-br from-indigo-500 to-purple-600'
+                                                }`}>
+                                                {initials}
                                             </div>
-
-                                            {/* Content */}
-                                            <div className={`flex-1 max-w-[85%] ${isMe ? 'items-end' : 'items-start'}`}>
-                                                {/* Header */}
-                                                <div className={`flex items-center gap-2 mb-1 ${isMe ? 'justify-end' : ''}`}>
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-2">
                                                     <span className="font-semibold text-white">{name}</span>
-                                                    <span className="text-xs text-white/40">({email})</span>
-                                                    <span className="text-xs text-white/30">{formatMessageDate(message.date)}</span>
+                                                    <span className="text-sm text-white/40">&lt;{email}&gt;</span>
                                                 </div>
+                                                <span className="text-xs text-white/40">{formatDate(message.date)}</span>
+                                            </div>
+                                        </div>
 
-                                                {/* Calendar Invite Card */}
-                                                {calendarDetails && (
-                                                    <div className="mb-3 p-4 rounded-xl bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border border-white/10">
-                                                        <div className="flex items-center gap-2 mb-2">
-                                                            <span className="text-lg">📅</span>
-                                                            <span className="font-semibold text-white">Calendar Invite</span>
+                                        {/* Message Body */}
+                                        <div className="ml-13 pl-4 border-l-2 border-white/10">
+                                            {calendarDetails && (
+                                                <div className="mb-6 p-4 rounded-xl bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border border-white/10 max-w-md">
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <span className="text-lg">📅</span>
+                                                        <span className="font-semibold text-white">Calendar Invite</span>
+                                                    </div>
+                                                    <p className="text-white font-medium">{calendarDetails.title}</p>
+                                                    {calendarDetails.dateTime && (
+                                                        <p className="text-white/60 text-sm mt-1">{calendarDetails.dateTime}</p>
+                                                    )}
+                                                    {calendarDetails.hasRSVP && (
+                                                        <div className="flex gap-2 mt-3">
+                                                            <button className="px-3 py-1.5 rounded-lg bg-green-500/20 text-green-400 text-sm font-medium hover:bg-green-500/30 transition">
+                                                                Accept
+                                                            </button>
+                                                            <button className="px-3 py-1.5 rounded-lg bg-red-500/20 text-red-400 text-sm font-medium hover:bg-red-500/30 transition">
+                                                                Decline
+                                                            </button>
+                                                            <button className="px-3 py-1.5 rounded-lg bg-yellow-500/20 text-yellow-400 text-sm font-medium hover:bg-yellow-500/30 transition">
+                                                                Maybe
+                                                            </button>
                                                         </div>
-                                                        <p className="text-white font-medium">{calendarDetails.title}</p>
-                                                        {calendarDetails.dateTime && (
-                                                            <p className="text-white/60 text-sm mt-1">{calendarDetails.dateTime}</p>
-                                                        )}
-                                                        {calendarDetails.hasRSVP && (
-                                                            <div className="flex gap-2 mt-3">
-                                                                <button className="px-3 py-1.5 rounded-lg bg-green-500/20 text-green-400 text-sm font-medium hover:bg-green-500/30 transition">
-                                                                    Accept
-                                                                </button>
-                                                                <button className="px-3 py-1.5 rounded-lg bg-red-500/20 text-red-400 text-sm font-medium hover:bg-red-500/30 transition">
-                                                                    Decline
-                                                                </button>
-                                                                <button className="px-3 py-1.5 rounded-lg bg-yellow-500/20 text-yellow-400 text-sm font-medium hover:bg-yellow-500/30 transition">
-                                                                    Maybe
-                                                                </button>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                )}
-
-                                                {/* Message Body */}
-                                                <div className={`p-4 rounded-2xl shadow-sm ${isMe
-                                                    ? 'bg-gradient-to-br from-accent to-purple text-white rounded-tr-sm'
-                                                    : 'bg-surface-elevated border border-border text-text-primary rounded-tl-sm'
-                                                    }`}>
-                                                    <div className="whitespace-pre-wrap break-words font-light leading-relaxed">
-                                                        {finalBody.split(/(\s+)/).map((part, i) => {
-                                                            if (part.match(/^https?:\/\//)) {
-                                                                return <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline font-medium">{part}</a>
-                                                            }
-                                                            return part
-                                                        })}
-                                                    </div>
+                                                    )}
                                                 </div>
+                                            )}
+                                            <div className="prose prose-invert prose-sm max-w-none text-white/80">
+                                                {formattedContent}
                                             </div>
                                         </div>
                                     </div>
