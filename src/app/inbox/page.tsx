@@ -340,28 +340,15 @@ export default function InboxPage() {
                 {selectedThreadId && threadDetail ? (
                     <>
                         {/* Conversation Header */}
-                        <div className="p-6 border-b border-border bg-surface/50 backdrop-blur-xl sticky top-0 z-10">
+                        <div className="sticky top-0 z-10 bg-[#0a0a0a] border-b border-white/5 px-8 py-6">
                             <div className="flex justify-between items-start gap-4">
                                 <div className="flex-1 min-w-0">
-                                    <h2 className="text-xl font-bold text-white mb-2 leading-tight">
+                                    <h1 className="text-2xl font-bold text-white mb-2 leading-tight">
                                         {threadDetail.thread.subject}
-                                    </h2>
-                                    <div className="flex items-center gap-3 text-xs text-text-muted font-mono">
-                                        <div className="flex -space-x-2">
-                                            {threadDetail.thread.participants.slice(0, 3).map((p, i) => (
-                                                <div key={i} className="w-6 h-6 rounded-full bg-surface-elevated border border-surface flex items-center justify-center text-[10px] font-bold text-white">
-                                                    {p[0].toUpperCase()}
-                                                </div>
-                                            ))}
-                                            {threadDetail.thread.participants.length > 3 && (
-                                                <div className="w-6 h-6 rounded-full bg-surface-elevated border border-surface flex items-center justify-center text-[10px] text-text-muted">
-                                                    +{threadDetail.thread.participants.length - 3}
-                                                </div>
-                                            )}
-                                        </div>
-                                        <span className="w-1 h-1 rounded-full bg-text-muted/30" />
-                                        <span>{threadDetail.thread.messageCount} messages</span>
-                                        <span className="w-1 h-1 rounded-full bg-text-muted/30" />
+                                    </h1>
+                                    <div className="flex items-center gap-3 text-sm text-white/50">
+                                        <span>{threadDetail.messages.length} message{threadDetail.messages.length > 1 ? 's' : ''}</span>
+                                        <span>•</span>
                                         <span>Last reply {formatDate(threadDetail.thread.lastMessageDate)}</span>
                                     </div>
                                 </div>
@@ -453,28 +440,37 @@ export default function InboxPage() {
                                 return (
                                     <div
                                         key={message.id}
-                                        className={`group animate-in fade-in slide-in-from-bottom-4 duration-500`}
+                                        className={`group animate-in fade-in slide-in-from-bottom-4 duration-500 mb-12`}
                                         style={{ animationDelay: `${index * 50}ms` }}
                                     >
-                                        {/* Sender Header */}
-                                        <div className="flex items-center gap-3 mb-3">
-                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-semibold shadow-lg ${isMe
+                                        {/* Sender Header - Make it prominent */}
+                                        <div className="flex items-start gap-4 mb-6 pb-4 border-b border-white/10">
+                                            {/* Avatar */}
+                                            <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold text-lg flex-shrink-0 shadow-lg ${isMe
                                                 ? 'bg-gradient-to-br from-accent to-purple'
                                                 : 'bg-gradient-to-br from-indigo-500 to-purple-600'
                                                 }`}>
                                                 {initials}
                                             </div>
-                                            <div className="flex-1">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-semibold text-white">{name}</span>
-                                                    <span className="text-sm text-white/40">&lt;{email}&gt;</span>
+
+                                            {/* Sender Details */}
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-3 flex-wrap">
+                                                    <span className="font-semibold text-white text-lg">{name}</span>
+                                                    <span className="text-sm text-white/60 bg-white/5 px-2 py-0.5 rounded">
+                                                        {email}
+                                                    </span>
                                                 </div>
-                                                <span className="text-xs text-white/40">{formatDate(message.date)}</span>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <span className="text-sm text-white/40">{formatDate(message.date)}</span>
+                                                    <span className="text-white/20">•</span>
+                                                    <span className="text-sm text-white/40">to me</span>
+                                                </div>
                                             </div>
                                         </div>
 
-                                        {/* Message Body */}
-                                        <div className="ml-13 pl-4 border-l-2 border-white/10">
+                                        {/* Message Body - Clean container, no extra borders */}
+                                        <div className="pl-16"> {/* Align with avatar */}
                                             {calendarDetails && (
                                                 <div className="mb-6 p-4 rounded-xl bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border border-white/10 max-w-md">
                                                     <div className="flex items-center gap-2 mb-2">
@@ -500,7 +496,7 @@ export default function InboxPage() {
                                                     )}
                                                 </div>
                                             )}
-                                            <div className="bg-white/[0.02] border border-white/[0.05] rounded-xl p-4">
+                                            <div className="email-content">
                                                 <EmailContent
                                                     content={message.body}
                                                     isHtml={message.isHtml}

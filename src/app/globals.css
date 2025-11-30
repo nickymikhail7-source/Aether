@@ -34,51 +34,103 @@ body {
 
 /* Email Content Styles */
 .email-content {
-  color: rgba(255, 255, 255, 0.85);
   line-height: 1.7;
-  font-size: 14px;
+  font-size: 15px;
 }
 
-.email-content p {
-  margin-bottom: 16px;
+/* ISSUE 1: Text is too dark and unreadable */
+.email-content,
+.email-content * {
+  color: #e5e5e5 !important;
+  /* Light gray, highly readable */
 }
 
+.email-content h1,
+.email-content h2,
+.email-content h3,
+.email-content h4,
+.email-content strong,
+.email-content b {
+  color: #ffffff !important;
+  /* Pure white for headings */
+}
+
+.email-content a {
+  color: #818cf8 !important;
+  /* Indigo for links */
+  text-decoration: underline;
+}
+
+.email-content blockquote {
+  color: #a3a3a3 !important;
+  /* Slightly muted for quotes */
+  border-left: 3px solid #6366f1 !important;
+  padding-left: 16px;
+  margin: 16px 0;
+  font-style: italic;
+}
+
+/* ISSUE 2: Remove messy table borders and lines */
+.email-content table,
+.email-content tr,
+.email-content td,
+.email-content th {
+  border: none !important;
+  border-collapse: collapse !important;
+  background: transparent !important;
+}
+
+/* Remove any visible borders */
+.email-content [style*="border"],
+.email-content [border] {
+  border: none !important;
+}
+
+/* Remove horizontal rules that look bad */
+.email-content hr {
+  display: none !important;
+}
+
+/* Clean up any inline styles that add borders */
+.email-content * {
+  border-color: transparent !important;
+}
+
+/* ISSUE 5: Override email's inline styles */
+/* Force light text on all elements regardless of inline styles */
+.email-content * {
+  background-color: transparent !important;
+  color: #e5e5e5 !important;
+  max-width: 100%;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+}
+
+/* But preserve images */
 .email-content img {
+  background-color: initial !important;
   max-width: 100%;
   height: auto;
   border-radius: 8px;
   margin: 16px 0;
 }
 
-.email-content a {
-  color: #818cf8;
-  text-decoration: underline;
-  transition: color 0.2s;
+/* Fix specific newsletter elements */
+.email-content [style*="color: #"] {
+  color: #e5e5e5 !important;
 }
 
-.email-content a:hover {
-  color: #a5b4fc;
+.email-content [style*="background"] {
+  background: transparent !important;
 }
 
-.email-content h1,
-.email-content h2,
-.email-content h3 {
-  color: white;
-  font-weight: 600;
-  margin-top: 24px;
-  margin-bottom: 12px;
-}
-
-.email-content h1 {
-  font-size: 24px;
-}
-
-.email-content h2 {
-  font-size: 20px;
-}
-
-.email-content h3 {
-  font-size: 18px;
+/* Hide tracking pixels and tiny images */
+.email-content img[width="1"],
+.email-content img[height="1"],
+.email-content img[src*="track"],
+.email-content img[src*="pixel"],
+.email-content img[src*="beacon"] {
+  display: none !important;
 }
 
 .email-content ul,
@@ -89,46 +141,4 @@ body {
 
 .email-content li {
   margin-bottom: 8px;
-}
-
-.email-content blockquote {
-  border-left: 3px solid rgba(255, 255, 255, 0.2);
-  padding-left: 16px;
-  margin: 16px 0;
-  color: rgba(255, 255, 255, 0.6);
-  font-style: italic;
-}
-
-.email-content table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 16px 0;
-}
-
-.email-content td,
-.email-content th {
-  padding: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.email-content hr {
-  border: none;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  margin: 24px 0;
-}
-
-/* Fix for wide content */
-.email-content * {
-  max-width: 100%;
-  overflow-wrap: break-word;
-  word-wrap: break-word;
-}
-
-/* Hide tracking pixels and tiny images */
-.email-content img[width="1"],
-.email-content img[height="1"],
-.email-content img[src*="track"],
-.email-content img[src*="pixel"],
-.email-content img[src*="beacon"] {
-  display: none !important;
 }
