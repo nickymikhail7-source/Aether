@@ -197,32 +197,44 @@ function parseMessage(message: any): GmailMessage | null {
  * Extracts email body from message payload
  */
 function extractBody(payload: any): { body: string; isHtml: boolean } {
-    let body = ''
-    let isHtml = false
-
-    // Check for direct body
-    if (payload.body?.data) {
-        body = decodeBase64(payload.body.data)
-        isHtml = payload.mimeType === 'text/html'
-        return { body, isHtml }
-    }
-
-    // Check parts for multipart messages
+    // Check for HTML part first
     if (payload.parts) {
-        // Prefer text/plain, fallback to text/html
-        const textPart = payload.parts.find((p: any) => p.mimeType === 'text/plain')
-        const htmlPart = payload.parts.find((p: any) => p.mimeType === 'text/html')
+        // Look for text/html part
+        const htmlPart = payload.parts.find((part: any) => part.mimeType === 'text/html');
+        if (htmlPart?.body?.data) {
+            return {
+                body: decodeBase64(htmlPart.body.data),
+                isHtml: true
+            };
+        }
 
+        // Fall back to text/plain
+        const textPart = payload.parts.find((part: any) => part.mimeType === 'text/plain');
         if (textPart?.body?.data) {
-            body = decodeBase64(textPart.body.data)
-            isHtml = false
-        } else if (htmlPart?.body?.data) {
-            body = decodeBase64(htmlPart.body.data)
-            isHtml = true
+            return {
+                body: decodeBase64(textPart.body.data),
+                isHtml: false
+            };
+        }
+
+        // Check nested parts (for multipart/alternative)
+        for (const part of payload.parts) {
+            if (part.parts) {
+                const nested = extractBody(part);
+                if (nested.body) return nested;
+            }
         }
     }
 
-    return { body, isHtml }
+    // Direct body
+    if (payload.body?.data) {
+        return {
+            body: decodeBase64(payload.body.data),
+            isHtml: payload.mimeType === 'text/html'
+        };
+    }
+
+    return { body: '', isHtml: false };
 }
 
 /**

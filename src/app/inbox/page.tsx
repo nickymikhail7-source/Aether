@@ -3,9 +3,9 @@
 import { useEffect, useState, useRef } from 'react'
 import { useSession, signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import { formatEmailContent, extractSenderInfo, formatDate } from '@/lib/email-formatter'
+import { extractSenderInfo, formatDate } from '@/lib/email-formatter'
 import { extractCalendarDetails } from '@/lib/email-utils'
+import { EmailContent } from '@/components/EmailContent'
 
 interface GmailThread {
     id: string
@@ -44,7 +44,6 @@ export default function InboxPage() {
     const router = useRouter()
     const [threads, setThreads] = useState<GmailThread[]>([])
     const [loading, setLoading] = useState(true)
-    const [error, setError] = useState<string | null>(null)
     const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null)
     const [threadDetail, setThreadDetail] = useState<ThreadDetail | null>(null)
     const [loadingThread, setLoadingThread] = useState(false)
@@ -70,6 +69,7 @@ export default function InboxPage() {
         if (status === 'authenticated') {
             fetchThreads()
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [status, router, selectedCategory])
 
     useEffect(() => {
@@ -95,9 +95,6 @@ export default function InboxPage() {
     async function fetchThreads() {
         try {
             setLoading(true)
-            setError(null)
-
-            setError(null)
 
             const response = await fetch(`/api/gmail/threads?category=${selectedCategory}`)
 
@@ -108,8 +105,8 @@ export default function InboxPage() {
 
             const data = await response.json()
             setThreads(data.threads || [])
-        } catch (err: any) {
-            setError(err.message)
+        } catch (err: unknown) {
+            console.error(err)
         } finally {
             setLoading(false)
         }
@@ -132,7 +129,7 @@ export default function InboxPage() {
 
             const data = await response.json()
             setThreadDetail(data)
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Error fetching thread:', err)
         } finally {
             setLoadingThread(false)
@@ -151,7 +148,7 @@ export default function InboxPage() {
                     subject: threadDetail.thread.subject,
                     messages: threadDetail.messages.map(m => ({
                         from: m.from,
-                        body: m.isHtml ? stripHtml(m.body) : m.body,
+                        body: m.body,
                         date: m.date,
                     })),
                 }),
@@ -169,7 +166,7 @@ export default function InboxPage() {
                         subject: threadDetail.thread.subject,
                         messages: threadDetail.messages.map(m => ({
                             from: m.from,
-                            body: m.isHtml ? stripHtml(m.body) : m.body,
+                            body: m.body,
                             date: m.date,
                         })),
                     }),
@@ -199,7 +196,7 @@ export default function InboxPage() {
                     subject: threadDetail.thread.subject,
                     messages: threadDetail.messages.map(m => ({
                         from: m.from,
-                        body: m.isHtml ? stripHtml(m.body) : m.body,
+                        body: m.body,
                         date: m.date,
                     })),
                 }),
@@ -224,72 +221,24 @@ export default function InboxPage() {
         )
     }
 
-    function stripHtml(html: string): string {
-        if (typeof window === 'undefined') return html; // Server-side fallback
 
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html, 'text/html');
-
-        // Remove unwanted tags
-        const unwanted = doc.querySelectorAll('style, script, head, title, meta, link, iframe, object, embed');
-        unwanted.forEach(el => el.remove());
-
-        // Process images
-        const images = doc.querySelectorAll('img');
-        images.forEach(img => {
-            const src = img.getAttribute('src');
-            if (src) {
-                const marker = doc.createTextNode(`\n\n[[IMAGE:${src}]]\n\n`);
-                img.parentNode?.replaceChild(marker, img);
-            } else {
-                img.remove();
-            }
-        });
-
-        // Process block elements to ensure spacing
-        const blocks = doc.querySelectorAll('p, div, h1, h2, h3, h4, h5, h6, ul, ol, li, table, tr');
-        blocks.forEach(block => {
-            block.innerHTML = `\n${block.innerHTML}\n`;
-        });
-
-        const brs = doc.querySelectorAll('br');
-        brs.forEach(br => {
-            br.replaceWith(doc.createTextNode('\n'));
-        });
-
-        // Get text content
-        return doc.body.textContent || '';
-    }
-
-    const priorityThreads = threads.filter(t => t.unread).slice(0, 5)
-    const recentThreads = threads.filter(t => !t.unread).slice(0, 15)
-
-    if (status === 'loading') {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-background">
-                <div className="text-text-secondary">Loading...</div>
-            </div>
-        )
-    }
 
     return (
-        <div className="flex h-screen bg-background">
+        <div className="flex h-screen bg-background text-text-primary font-sans overflow-hidden selection:bg-accent/30 selection:text-white">
             {/* Sidebar */}
-            <div className="w-[300px] bg-surface border-r border-border flex flex-col">
+            <div className="w-[280px] flex flex-col border-r border-border bg-surface/50 backdrop-blur-xl">
                 {/* Header */}
-                <div className="p-6">
-                    <Link href="/" className="flex items-center space-x-3 group">
-                        <div className="relative w-8 h-8 flex items-center justify-center">
-                            <div className="absolute inset-0 bg-accent rounded-lg opacity-20 group-hover:opacity-40 blur-lg transition-opacity duration-500" />
-                            <div className="relative w-8 h-8 rounded-lg bg-gradient-to-br from-accent to-purple flex items-center justify-center shadow-lg shadow-accent/20">
-                                <span className="text-white text-lg font-bold">A</span>
-                            </div>
+                <div className="p-6 flex items-center gap-3">
+                    <div className="relative group cursor-pointer">
+                        <div className="absolute -inset-1 bg-gradient-to-r from-accent via-purple-500 to-pink-500 rounded-full opacity-75 group-hover:opacity-100 blur transition duration-1000 group-hover:duration-200 animate-tilt"></div>
+                        <div className="relative w-8 h-8 rounded-full bg-black flex items-center justify-center ring-1 ring-white/10">
+                            <span className="font-bold text-white text-lg">A</span>
                         </div>
-                        <span className="text-text-primary font-semibold text-lg tracking-tight">Aether</span>
-                    </Link>
+                    </div>
+                    <h1 className="text-lg font-bold tracking-tight text-white">Aether</h1>
                 </div>
 
-                {/* Views / Categories */}
+                {/* Views */}
                 <div className="px-3 space-y-1 mb-6">
                     <div className="px-3 mb-2">
                         <h2 className="text-text-muted text-[10px] font-bold uppercase tracking-widest opacity-60">
@@ -311,187 +260,143 @@ export default function InboxPage() {
                                 setSelectedCategory(category.id)
                                 setSelectedThreadId(null)
                             }}
-                            className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-between group relative overflow-hidden ${selectedCategory === category.id
-                                ? 'bg-surface-hover text-text-primary shadow-lg shadow-black/20'
-                                : 'text-text-secondary hover:bg-surface-hover hover:text-text-primary hover:scale-[1.02]'
+                            className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 group ${selectedCategory === category.id
+                                ? 'bg-surface-elevated text-white shadow-lg shadow-black/20 border-l-2 border-accent'
+                                : 'text-text-secondary hover:bg-surface-hover hover:text-white hover:translate-x-1'
                                 }`}
                         >
-                            {selectedCategory === category.id && (
-                                <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-gradient-to-b from-accent to-purple" />
-                            )}
-                            <div className="flex items-center space-x-3 z-10">
-                                <span className={`w-5 text-center transition-transform duration-300 ${selectedCategory === category.id ? 'scale-110' : 'group-hover:scale-110'}`}>{category.icon}</span>
+                            <div className="flex items-center gap-3">
+                                <span className={`text-lg transition-transform duration-300 ${selectedCategory === category.id ? 'scale-110' : 'group-hover:scale-110'}`}>
+                                    {category.icon}
+                                </span>
                                 <span>{category.label}</span>
                             </div>
                             {category.id === 'priority' && (
-                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono z-10 ${selectedCategory === 'priority'
-                                    ? 'bg-gradient-to-r from-accent to-purple text-white shadow-md shadow-accent/20'
-                                    : 'bg-surface-elevated text-text-muted group-hover:text-text-secondary'
+                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${selectedCategory === category.id
+                                    ? 'bg-accent text-white'
+                                    : 'bg-surface-elevated text-text-muted group-hover:bg-surface-elevated group-hover:text-white'
                                     }`}>
-                                    {threads.filter(t => t.unread).length || ''}
+                                    {threads.filter(t => t.unread).length}
                                 </span>
                             )}
                         </button>
                     ))}
                 </div>
 
-                {/* Conversations List */}
-                <div className="flex-1 overflow-y-auto px-2 pb-4 space-y-1">
-                    {loading ? (
-                        <div className="px-2 space-y-3 mt-4">
-                            {[...Array(5)].map((_, i) => (
-                                <div key={i} className="animate-pulse flex items-start space-x-3 p-2">
-                                    <div className="w-8 h-8 bg-surface-hover rounded-full" />
-                                    <div className="flex-1 space-y-2">
-                                        <div className="h-3 bg-surface-hover rounded w-3/4" />
-                                        <div className="h-2 bg-surface-hover rounded w-full" />
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    ) : error ? (
-                        <div className="p-4">
-                            <div className="bg-red/10 border border-red/20 rounded-lg p-4 backdrop-blur-sm">
-                                <p className="text-red text-sm font-medium">Error loading emails</p>
-                                <p className="text-red/70 text-xs mt-1">{error}</p>
-                                <button
-                                    onClick={fetchThreads}
-                                    className="mt-3 text-xs text-accent hover:text-white transition-colors"
-                                >
-                                    Try again
-                                </button>
+                {/* Thread List */}
+                <div className="flex-1 overflow-y-auto px-3 pb-4 custom-scrollbar">
+                    <div className="space-y-1">
+                        {loading ? (
+                            <div className="flex justify-center p-8">
+                                <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
                             </div>
-                        </div>
-                    ) : threads.length === 0 ? (
-                        <div className="p-8 text-center">
-                            <p className="text-text-muted text-sm">No emails found</p>
-                        </div>
-                    ) : (
-                        threads.map((thread, index) => (
-                            <button
-                                key={thread.id}
-                                onClick={() => setSelectedThreadId(thread.id)}
-                                style={{ animationDelay: `${index * 50}ms` }}
-                                className={`w-full text-left px-3 py-3 rounded-xl transition-all duration-200 group relative animate-in fade-in slide-in-from-bottom-2 ${selectedThreadId === thread.id
-                                    ? 'bg-surface-elevated shadow-lg shadow-black/20'
-                                    : 'hover:bg-surface-hover/50 hover:backdrop-blur-sm'
-                                    }`}
-                            >
-                                {selectedThreadId === thread.id && (
-                                    <div className="absolute left-0 top-3 bottom-3 w-[3px] rounded-r-full bg-gradient-to-b from-accent to-purple" />
-                                )}
-                                <div className="flex items-start space-x-3">
-                                    <div className={`relative w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 transition-transform duration-300 ${selectedThreadId === thread.id ? 'scale-110' : 'group-hover:scale-105'
-                                        } ${thread.unread ? 'bg-gradient-to-br from-accent to-purple p-[1px]' : 'bg-surface-hover'}`}>
-                                        <div className={`w-full h-full rounded-full flex items-center justify-center ${thread.unread ? 'bg-surface' : ''}`}>
-                                            <span className={`text-[10px] font-bold ${thread.unread ? 'text-white' : 'text-text-muted'}`}>
-                                                <span className={`text-[10px] font-bold ${thread.unread ? 'text-white' : 'text-text-muted'}`}>
-                                                    {(() => {
-                                                        const primary = thread.participants.filter(p => p !== session?.user?.email)[0] || thread.participants[0] || 'Unknown'
-                                                        return primary.split('@')[0].substring(0, 2).toUpperCase()
-                                                    })()}
-                                                </span>
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center justify-between mb-0.5">
-                                            <span className={`text-sm truncate transition-colors ${thread.unread ? 'text-white font-medium' : 'text-text-secondary'
+                        ) : (
+                            threads.map((thread, index) => (
+                                <div
+                                    key={thread.id}
+                                    onClick={() => setSelectedThreadId(thread.id)}
+                                    className={`group p-3 rounded-xl cursor-pointer transition-all duration-200 border border-transparent hover:border-border-bright ${selectedThreadId === thread.id
+                                        ? 'bg-surface-elevated shadow-lg shadow-black/20 ring-1 ring-white/5'
+                                        : 'hover:bg-surface-hover/50'
+                                        } animate-in fade-in slide-in-from-left-4 duration-500`}
+                                    style={{ animationDelay: `${index * 50}ms` }}
+                                >
+                                    <div className="flex justify-between items-start mb-1">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            {thread.unread && (
+                                                <div className="w-1.5 h-1.5 rounded-full bg-accent shadow-[0_0_8px_rgba(99,102,241,0.5)] flex-shrink-0" />
+                                            )}
+                                            <span className={`text-sm truncate ${thread.unread ? 'font-semibold text-white' : 'text-text-secondary group-hover:text-white/90'
                                                 }`}>
-                                                {(() => {
-                                                    const primary = thread.participants.filter(p => p !== session?.user?.email)[0] || thread.participants[0] || 'Unknown'
-                                                    return primary.split('@')[0]
-                                                })()}
-                                            </span>
-                                            <span className="text-text-muted text-[10px] font-mono flex-shrink-0 ml-2 opacity-60">
-                                                {formatDate(thread.lastMessageDate)}
+                                                {thread.participants[0]}
                                             </span>
                                         </div>
-                                        <p className={`text-sm truncate mb-0.5 ${thread.unread ? 'text-text-primary' : 'text-text-secondary'}`}>
-                                            {thread.subject}
-                                        </p>
-                                        <p className="text-text-muted text-xs truncate opacity-60 group-hover:opacity-80 transition-opacity">
-                                            {thread.snippet}
-                                        </p>
+                                        <span className="text-[10px] text-text-muted whitespace-nowrap ml-2 font-mono">
+                                            {formatDate(thread.lastMessageDate)}
+                                        </span>
                                     </div>
-                                    {thread.unread && (
-                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-gradient-to-r from-accent to-purple shadow-lg shadow-accent/50" />
-                                    )}
+                                    <h3 className={`text-sm mb-1 truncate ${thread.unread ? 'text-white font-medium' : 'text-text-secondary'
+                                        }`}>
+                                        {thread.subject}
+                                    </h3>
+                                    <p className="text-xs text-text-muted line-clamp-2 leading-relaxed">
+                                        {thread.snippet}
+                                    </p>
                                 </div>
-                            </button>
-                        ))
-                    )}
+                            ))
+                        )}
+                    </div>
                 </div>
             </div>
 
-            {/* Main Content Area */}
-            <div className="flex-1 flex flex-col">
+            {/* Main Content */}
+            <div className="flex-1 flex flex-col bg-surface/30 backdrop-blur-3xl relative overflow-hidden">
+                {/* Background Gradients */}
+                <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+                    <div className="absolute top-[-20%] right-[-10%] w-[600px] h-[600px] bg-purple-900/10 rounded-full blur-[120px]" />
+                    <div className="absolute bottom-[-20%] left-[-10%] w-[500px] h-[500px] bg-indigo-900/10 rounded-full blur-[100px]" />
+                </div>
+
                 {selectedThreadId && threadDetail ? (
                     <>
                         {/* Conversation Header */}
-                        <div className="border-b border-border bg-surface/50 backdrop-blur-xl p-6 sticky top-0 z-10">
-                            <div className="flex items-start justify-between mb-4">
-                                <h1 className="text-text-primary text-2xl font-bold tracking-tight leading-tight max-w-2xl">
-                                    {threadDetail.thread.subject}
-                                </h1>
+                        <div className="p-6 border-b border-border bg-surface/50 backdrop-blur-xl sticky top-0 z-10">
+                            <div className="flex justify-between items-start gap-4">
+                                <div className="flex-1 min-w-0">
+                                    <h2 className="text-xl font-bold text-white mb-2 leading-tight">
+                                        {threadDetail.thread.subject}
+                                    </h2>
+                                    <div className="flex items-center gap-3 text-xs text-text-muted font-mono">
+                                        <div className="flex -space-x-2">
+                                            {threadDetail.thread.participants.slice(0, 3).map((p, i) => (
+                                                <div key={i} className="w-6 h-6 rounded-full bg-surface-elevated border border-surface flex items-center justify-center text-[10px] font-bold text-white">
+                                                    {p[0].toUpperCase()}
+                                                </div>
+                                            ))}
+                                            {threadDetail.thread.participants.length > 3 && (
+                                                <div className="w-6 h-6 rounded-full bg-surface-elevated border border-surface flex items-center justify-center text-[10px] text-text-muted">
+                                                    +{threadDetail.thread.participants.length - 3}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <span className="w-1 h-1 rounded-full bg-text-muted/30" />
+                                        <span>{threadDetail.thread.messageCount} messages</span>
+                                        <span className="w-1 h-1 rounded-full bg-text-muted/30" />
+                                        <span>Last reply {formatDate(threadDetail.thread.lastMessageDate)}</span>
+                                    </div>
+                                </div>
                                 <button
                                     onClick={summarizeWithAI}
                                     disabled={loadingAI}
-                                    className="group relative px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 disabled:opacity-50 overflow-hidden"
+                                    className="group relative px-4 py-2 rounded-lg bg-surface-elevated hover:bg-surface-hover border border-border hover:border-accent/50 transition-all duration-300 disabled:opacity-50 overflow-hidden"
                                 >
-                                    <div className="absolute inset-0 bg-gradient-to-r from-accent to-purple opacity-10 group-hover:opacity-20 transition-opacity" />
-                                    <div className="absolute inset-0 border border-accent/20 rounded-lg group-hover:border-accent/40 transition-colors" />
-                                    <div className="relative flex items-center space-x-2 text-accent group-hover:text-white transition-colors">
+                                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:animate-shimmer" />
+                                    <div className="flex items-center gap-2 relative z-10">
                                         {loadingAI ? (
-                                            <>
-                                                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                                                <span>Analyzing...</span>
-                                            </>
+                                            <div className="w-3 h-3 border-2 border-accent border-t-transparent rounded-full animate-spin" />
                                         ) : (
-                                            <>
-                                                <span className="text-lg">✨</span>
-                                                <span>Summarize with AI</span>
-                                            </>
+                                            <span className="text-accent">✨</span>
                                         )}
+                                        <span className="text-xs font-medium text-white">
+                                            {loadingAI ? 'Thinking...' : 'Summarize with AI'}
+                                        </span>
                                     </div>
                                 </button>
                             </div>
-                            <div className="flex items-center space-x-4 text-xs font-mono text-text-secondary">
-                                <div className="flex -space-x-2">
-                                    {threadDetail.thread.participants.slice(0, 3).map((p, i) => (
-                                        <div key={i} className="w-6 h-6 rounded-full bg-surface border border-surface flex items-center justify-center text-[8px] font-bold text-text-muted">
-                                            <div key={i} className="w-6 h-6 rounded-full bg-surface border border-surface flex items-center justify-center text-[8px] font-bold text-text-muted">
-                                                {p.split('@')[0].substring(0, 2).toUpperCase()}
-                                            </div>
-                                        </div>
-                                    ))}
-                                    {threadDetail.thread.participants.length > 3 && (
-                                        <div className="w-6 h-6 rounded-full bg-surface-elevated border border-surface flex items-center justify-center text-[8px] font-bold text-text-muted">
-                                            +{threadDetail.thread.participants.length - 3}
-                                        </div>
-                                    )}
-                                </div>
-                                <span>{threadDetail.messages.length} messages</span>
-                                <span className="w-1 h-1 rounded-full bg-border-bright" />
-                                <span>Last reply {formatDate(threadDetail.thread.lastMessageDate)}</span>
-                            </div>
                         </div>
 
-                        {/* Messages */}
-                        <div ref={messageContainerRef} className="flex-1 overflow-y-auto p-8 space-y-8 scroll-smooth">
+                        {/* Messages Area */}
+                        <div ref={messageContainerRef} className="flex-1 overflow-y-auto p-6 space-y-8 relative z-0 custom-scrollbar">
                             {/* AI Summary Card */}
                             {aiSummary && (
-                                <div className="glass rounded-2xl p-6 relative overflow-hidden group animate-in fade-in zoom-in-95 duration-500">
-                                    <div className="absolute inset-0 bg-gradient-to-br from-accent/5 to-purple/5 opacity-50" />
-                                    <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-accent/20 to-transparent" />
-                                    <div className="relative space-y-4">
-                                        <div className="flex items-center space-x-2">
-                                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent to-purple flex items-center justify-center shadow-lg shadow-accent/20">
-                                                <span className="text-white text-sm">✨</span>
-                                            </div>
-                                            <h3 className="text-text-primary font-semibold tracking-tight">AI Summary</h3>
+                                <div className="animate-in fade-in slide-in-from-top-4 duration-500 mb-8">
+                                    <div className="glass p-6 rounded-2xl border border-accent/20 shadow-[0_0_30px_rgba(99,102,241,0.1)] relative overflow-hidden group">
+                                        <div className="absolute top-0 right-0 w-32 h-32 bg-accent/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:bg-accent/20 transition-colors duration-500" />
+                                        <div className="flex items-center gap-2 mb-3 relative z-10">
+                                            <span className="text-lg">✨</span>
+                                            <h3 className="text-sm font-bold text-white uppercase tracking-wider">AI Summary</h3>
                                         </div>
-                                        <p className="text-text-secondary text-sm leading-relaxed font-light">
+                                        <p className="text-sm text-white/90 leading-relaxed relative z-10">
                                             {aiSummary}
                                         </p>
                                     </div>
@@ -500,28 +405,25 @@ export default function InboxPage() {
 
                             {/* Action Items Card */}
                             {actionItems.length > 0 && (
-                                <div className="glass rounded-2xl p-6 relative overflow-hidden group animate-in fade-in zoom-in-95 duration-500 delay-100">
-                                    <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 to-orange-500/5 opacity-50" />
-                                    <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-amber-500/20 to-transparent" />
-                                    <div className="relative space-y-4">
-                                        <div className="flex items-center space-x-2">
-                                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shadow-lg shadow-amber-500/20">
-                                                <span className="text-white text-sm">⚡</span>
-                                            </div>
-                                            <h3 className="text-text-primary font-semibold tracking-tight">Action Items</h3>
+                                <div className="animate-in fade-in slide-in-from-top-4 duration-500 delay-100 mb-8">
+                                    <div className="glass p-6 rounded-2xl border border-amber-500/20 shadow-[0_0_30px_rgba(245,158,11,0.05)] relative overflow-hidden">
+                                        <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+                                        <div className="flex items-center gap-2 mb-4 relative z-10">
+                                            <span className="text-lg">⚡</span>
+                                            <h3 className="text-sm font-bold text-amber-200 uppercase tracking-wider">Action Items</h3>
                                         </div>
-                                        <div className="space-y-3">
-                                            {actionItems.map((item, index) => (
-                                                <label key={index} className="flex items-start space-x-3 cursor-pointer group/item">
-                                                    <div className="relative mt-0.5">
+                                        <div className="space-y-3 relative z-10">
+                                            {actionItems.map((item, i) => (
+                                                <label key={i} className="flex items-start gap-3 group/item cursor-pointer">
+                                                    <div className="relative flex items-center pt-0.5">
                                                         <input
                                                             type="checkbox"
                                                             checked={item.completed}
-                                                            onChange={() => toggleActionItem(index)}
-                                                            className="peer sr-only"
+                                                            onChange={() => toggleActionItem(i)}
+                                                            className="peer appearance-none w-4 h-4 rounded border border-white/20 checked:bg-amber-500 checked:border-amber-500 transition-all duration-200 cursor-pointer"
                                                         />
-                                                        <div className="w-5 h-5 rounded border border-border bg-surface-hover peer-checked:bg-gradient-to-br peer-checked:from-amber-500 peer-checked:to-orange-500 peer-checked:border-transparent transition-all duration-200 flex items-center justify-center">
-                                                            <svg className="w-3 h-3 text-white opacity-0 peer-checked:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <div className="absolute inset-0 flex items-center justify-center text-black opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity duration-200">
+                                                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                                                             </svg>
                                                         </div>
@@ -546,9 +448,7 @@ export default function InboxPage() {
                             {threadDetail.messages.map((message, index) => {
                                 const { name, email, initials } = extractSenderInfo(message.from)
                                 const isMe = message.from.toLowerCase().includes(session?.user?.email?.toLowerCase() || '')
-                                const cleanedBody = message.isHtml ? stripHtml(message.body) : message.body
-                                const formattedContent = formatEmailContent(cleanedBody)
-                                const calendarDetails = extractCalendarDetails(message.subject || '', cleanedBody)
+                                const calendarDetails = extractCalendarDetails(message.subject || '', message.body)
 
                                 return (
                                     <div
@@ -600,8 +500,11 @@ export default function InboxPage() {
                                                     )}
                                                 </div>
                                             )}
-                                            <div className="prose prose-invert prose-sm max-w-none text-white/80">
-                                                {formattedContent}
+                                            <div className="bg-white/[0.02] border border-white/[0.05] rounded-xl p-4">
+                                                <EmailContent
+                                                    content={message.body}
+                                                    isHtml={message.isHtml}
+                                                />
                                             </div>
                                         </div>
                                     </div>
