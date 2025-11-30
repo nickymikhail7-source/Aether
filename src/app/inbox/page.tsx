@@ -225,35 +225,40 @@ export default function InboxPage() {
     }
 
     function stripHtml(html: string): string {
-        // Basic HTML stripping for preview (production would use DOMPurify)
-        return html
-            .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-            .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-            .replace(/<head[^>]*>[\s\S]*?<\/head>/gi, '')
-            .replace(/<title[^>]*>[\s\S]*?<\/title>/gi, '')
-            .replace(/<meta[^>]*>/gi, '')
-            .replace(/<link[^>]*>/gi, '')
-            // Preserve images as markers with newlines
-            .replace(/<img[^>]+src="([^">]+)"[^>]*>/gi, '\n\n[[IMAGE:$1]]\n\n')
-            .replace(/<img[^>]+src='([^'>]+)'[^>]*>/gi, '\n\n[[IMAGE:$1]]\n\n')
-            // Replace block tags with newlines to preserve structure
-            .replace(/<\/p>/gi, '\n\n')
-            .replace(/<\/div>/gi, '\n')
-            .replace(/<br\s*\/?>/gi, '\n')
-            .replace(/<h[1-6][^>]*>/gi, '\n\n')
-            .replace(/<\/h[1-6]>/gi, '\n\n')
-            .replace(/<li[^>]*>/gi, '\n• ')
-            .replace(/<\/li>/gi, '\n')
-            .replace(/<\/tr>/gi, '\n')
-            .replace(/<\/table>/gi, '\n\n')
-            // Remove remaining tags
-            .replace(/<[^>]+>/g, '')
-            .replace(/&nbsp;/g, ' ')
-            .replace(/&amp;/g, '&')
-            .replace(/&lt;/g, '<')
-            .replace(/&gt;/g, '>')
-            .replace(/&quot;/g, '"')
-            .trim()
+        if (typeof window === 'undefined') return html; // Server-side fallback
+
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+
+        // Remove unwanted tags
+        const unwanted = doc.querySelectorAll('style, script, head, title, meta, link, iframe, object, embed');
+        unwanted.forEach(el => el.remove());
+
+        // Process images
+        const images = doc.querySelectorAll('img');
+        images.forEach(img => {
+            const src = img.getAttribute('src');
+            if (src) {
+                const marker = doc.createTextNode(`\n\n[[IMAGE:${src}]]\n\n`);
+                img.parentNode?.replaceChild(marker, img);
+            } else {
+                img.remove();
+            }
+        });
+
+        // Process block elements to ensure spacing
+        const blocks = doc.querySelectorAll('p, div, h1, h2, h3, h4, h5, h6, ul, ol, li, table, tr');
+        blocks.forEach(block => {
+            block.innerHTML = `\n${block.innerHTML}\n`;
+        });
+
+        const brs = doc.querySelectorAll('br');
+        brs.forEach(br => {
+            br.replaceWith(doc.createTextNode('\n'));
+        });
+
+        // Get text content
+        return doc.body.textContent || '';
     }
 
     const priorityThreads = threads.filter(t => t.unread).slice(0, 5)
