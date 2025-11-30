@@ -227,8 +227,12 @@ export default function InboxPage() {
     function stripHtml(html: string): string {
         // Basic HTML stripping for preview (production would use DOMPurify)
         return html
-            .replace(/<style[^>]*>.*?<\/style>/gi, '')
-            .replace(/<script[^>]*>.*?<\/script>/gi, '')
+            .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+            .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+            .replace(/<head[^>]*>[\s\S]*?<\/head>/gi, '')
+            .replace(/<title[^>]*>[\s\S]*?<\/title>/gi, '')
+            .replace(/<meta[^>]*>/gi, '')
+            .replace(/<link[^>]*>/gi, '')
             // Preserve images as markers with newlines
             .replace(/<img[^>]+src="([^">]+)"[^>]*>/gi, '\n\n[[IMAGE:$1]]\n\n')
             .replace(/<img[^>]+src='([^'>]+)'[^>]*>/gi, '\n\n[[IMAGE:$1]]\n\n')
