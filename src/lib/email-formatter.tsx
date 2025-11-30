@@ -22,7 +22,7 @@ export function formatEmailContent(body: string): React.ReactNode[] {
         .replace(/[ \t]+/g, ' ')
         .replace(/\n{3,}/g, '\n\n');
 
-    // Split into paragraphs
+    // Split into paragraphs by double newline
     const paragraphs = content.split(/\n\n+/);
 
     return paragraphs.map((para, index) => {

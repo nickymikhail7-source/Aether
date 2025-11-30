@@ -237,7 +237,16 @@ export default function InboxPage() {
             .replace(/<img[^>]+src="([^">]+)"[^>]*>/gi, '\n\n[[IMAGE:$1]]\n\n')
             .replace(/<img[^>]+src='([^'>]+)'[^>]*>/gi, '\n\n[[IMAGE:$1]]\n\n')
             // Replace block tags with newlines to preserve structure
-            .replace(/<(br|p|div|h\d|li|tr|table)[^>]*>/gi, '\n')
+            .replace(/<\/p>/gi, '\n\n')
+            .replace(/<\/div>/gi, '\n')
+            .replace(/<br\s*\/?>/gi, '\n')
+            .replace(/<h[1-6][^>]*>/gi, '\n\n')
+            .replace(/<\/h[1-6]>/gi, '\n\n')
+            .replace(/<li[^>]*>/gi, '\n• ')
+            .replace(/<\/li>/gi, '\n')
+            .replace(/<\/tr>/gi, '\n')
+            .replace(/<\/table>/gi, '\n\n')
+            // Remove remaining tags
             .replace(/<[^>]+>/g, '')
             .replace(/&nbsp;/g, ' ')
             .replace(/&amp;/g, '&')
