@@ -1,6 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { VoiceButton } from './VoiceButton';
+import { EmailCard } from './EmailCard';
 
 interface EmailPanelProps {
     thread: any;
@@ -262,14 +264,24 @@ export function EmailPanel({ thread, isOpen, onClose }: EmailPanelProps) {
                                 </button>
                             </div>
 
-                            {/* Natural language input */}
-                            <textarea
-                                value={userIntent}
-                                onChange={(e) => setUserIntent(e.target.value)}
-                                placeholder="e.g., Thank them for the update, confirm I'm interested, ask when we can meet..."
-                                rows={3}
-                                className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 resize-none focus:outline-none focus:border-indigo-500/50 mb-4"
-                            />
+                            {/* Voice + Text Input */}
+                            <div className="relative mb-4">
+                                <textarea
+                                    value={userIntent}
+                                    onChange={(e) => setUserIntent(e.target.value)}
+                                    placeholder="e.g., Thank them for the update, confirm I'm interested, ask about next steps..."
+                                    rows={3}
+                                    className="w-full px-4 py-3 pr-16 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 resize-none focus:outline-none focus:border-indigo-500/50"
+                                />
+
+                                {/* Voice Button */}
+                                <div className="absolute bottom-3 right-3">
+                                    <VoiceButton
+                                        onTranscription={(text) => setUserIntent(prev => prev ? `${prev} ${text}` : text)}
+                                        size="sm"
+                                    />
+                                </div>
+                            </div>
 
                             {/* Quick action chips */}
                             <p className="text-xs text-white/50 mb-2">Or quick select:</p>
@@ -279,8 +291,8 @@ export function EmailPanel({ thread, isOpen, onClose }: EmailPanelProps) {
                                         key={chip.label}
                                         onClick={() => toggleChip(chip.prompt)}
                                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-all ${selectedChips.includes(chip.prompt)
-                                                ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-300 border'
-                                                : 'bg-white/5 border border-white/10 text-white/70 hover:bg-white/10'
+                                            ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-300 border'
+                                            : 'bg-white/5 border border-white/10 text-white/70 hover:bg-white/10'
                                             }`}
                                     >
                                         <span>{chip.emoji}</span>

@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useSession, signIn } from 'next-auth/react';
 import { EmailCard } from '@/components/EmailCard';
 import { EmailPanel } from '@/components/EmailPanel';
+import { ComposeModal } from '@/components/ComposeModal';
+import { VoiceButton } from '@/components/VoiceButton';
 
 export default function InboxPage() {
     const { data: session, status } = useSession();
@@ -13,6 +15,8 @@ export default function InboxPage() {
     const [loading, setLoading] = useState(true);
     const [activeView, setActiveView] = useState<'decisions' | 'fyi' | 'gatekeeper'>('decisions');
     const [error, setError] = useState<string | null>(null);
+    const [showCompose, setShowCompose] = useState(false);
+    const [defaultComposeIntent, setDefaultComposeIntent] = useState('');
 
     // Fetch threads
     useEffect(() => {
@@ -196,10 +200,24 @@ export default function InboxPage() {
                         </p>
                     </div>
 
-                    <button className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 transition-all">
-                        <span className="text-lg">🎙️</span>
-                        <span className="text-sm font-medium text-white/70">Voice Command</span>
-                    </button>
+                    <VoiceButton
+                        onTranscription={(text) => {
+                            const lowerText = text.toLowerCase();
+                            if (
+                                lowerText.includes('email') ||
+                                lowerText.includes('send') ||
+                                lowerText.includes('compose') ||
+                                lowerText.includes('write') ||
+                                lowerText.includes('message')
+                            ) {
+                                setDefaultComposeIntent(text);
+                                setShowCompose(true);
+                            }
+                        }}
+                        size="md"
+                        showLabel
+                        className="px-5 py-2.5"
+                    />
                 </header>
 
                 {/* Email List */}
@@ -254,6 +272,25 @@ export default function InboxPage() {
                 thread={panelThread}
                 isOpen={!!panelThread}
                 onClose={() => setPanelThread(null)}
+            />
+
+            {/* Floating Compose Button */}
+            <button
+                onClick={() => setShowCompose(true)}
+                className="fixed bottom-8 right-8 w-14 h-14 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-xl shadow-indigo-500/30 flex items-center justify-center hover:scale-105 hover:shadow-indigo-500/40 transition-all z-30"
+                title="Compose new email"
+            >
+                <span className="text-2xl">✏️</span>
+            </button>
+
+            {/* Compose Modal */}
+            <ComposeModal
+                isOpen={showCompose}
+                onClose={() => {
+                    setShowCompose(false);
+                    setDefaultComposeIntent('');
+                }}
+                defaultIntent={defaultComposeIntent}
             />
         </div>
     );
