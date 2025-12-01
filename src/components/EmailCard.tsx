@@ -41,34 +41,92 @@ export function EmailCard({ thread, message, onOpenPanel, trustScore = 3 }: Emai
     const [analysis, setAnalysis] = useState<EmailAnalysis | null>(null);
     const [loading, setLoading] = useState(true);
 
-    // Get sender from various sources
-    const getSenderFrom = (): string => {
-        if (message?.from && message.from.trim() !== '') return message.from;
-        if (thread?.messages?.[0]?.from) return thread.messages[0].from;
-        const headers = thread?.messages?.[0]?.payload?.headers || [];
-        const fromHeader = headers.find((h: any) => h.name?.toLowerCase() === 'from');
-        if (fromHeader?.value) return fromHeader.value;
-        if (thread?.from) return thread.from;
-        return '';
-    };
+    // Helper to extract sender from all possible locations in Gmail API response
+    const extractSenderFromThread = (thread: any, message: any): { name: string; email: string; initials: string } => {
+        // Try multiple sources for the "from" field
+        let fromString = '';
 
-    const extractSender = (from: string) => {
-        if (!from || from.trim() === '') {
+        // Source 1: Direct message.from
+        if (message?.from && message.from.trim()) {
+            fromString = message.from;
+        }
+        // Source 2: Thread's first message payload headers
+        else if (thread?.messages?.[0]?.payload?.headers) {
+            const headers = thread.messages[0].payload.headers;
+            const fromHeader = headers.find((h: any) => h.name?.toLowerCase() === 'from');
+            if (fromHeader?.value) {
+                fromString = fromHeader.value;
+            }
+        }
+        // Source 3: Message payload headers
+        else if (message?.payload?.headers) {
+            const headers = message.payload.headers;
+            const fromHeader = headers.find((h: any) => h.name?.toLowerCase() === 'from');
+            if (fromHeader?.value) {
+                fromString = fromHeader.value;
+            }
+        }
+        // Source 4: Thread-level from
+        else if (thread?.from) {
+            fromString = thread.from;
+        }
+        // Source 5: Any message in thread
+        else if (thread?.messages) {
+            for (const msg of thread.messages) {
+                if (msg?.from) {
+                    fromString = msg.from;
+                    break;
+                }
+                if (msg?.payload?.headers) {
+                    const fromHeader = msg.payload.headers.find((h: any) => h.name?.toLowerCase() === 'from');
+                    if (fromHeader?.value) {
+                        fromString = fromHeader.value;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // If still empty, return unknown
+        if (!fromString || !fromString.trim()) {
             return { name: 'Unknown Sender', email: '', initials: 'US' };
         }
-        const pattern = from.match(/^"?([^"<]+)"?\s*<?([^>]*)>?$/);
-        if (pattern) {
-            const name = pattern[1].trim();
-            const email = pattern[2]?.trim() || from;
-            const words = name.split(/\s+/).filter(w => w.length > 0);
+
+        // Parse the from string
+        const fullMatch = fromString.match(/^"?([^"<]+)"?\s*<([^>]+)>$/);
+        if (fullMatch) {
+            const name = fullMatch[1].trim();
+            const email = fullMatch[2].trim();
+            const words = name.split(/\s+/).filter((w: string) => w.length > 0);
             const initials = words.length >= 2
                 ? (words[0][0] + words[words.length - 1][0]).toUpperCase()
                 : name.substring(0, 2).toUpperCase();
             return { name, email, initials };
         }
-        const email = from.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/)?.[1] || from;
-        const namePart = email.split('@')[0].replace(/[._-]/g, ' ');
-        return { name: namePart, email, initials: namePart.substring(0, 2).toUpperCase() };
+
+        // Just email format
+        const emailMatch = fromString.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+        if (emailMatch) {
+            const email = emailMatch[1];
+            const namePart = email.split('@')[0]
+                .replace(/[._-]/g, ' ')
+                .split(' ')
+                .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                .join(' ');
+            return {
+                name: namePart,
+                email,
+                initials: namePart.substring(0, 2).toUpperCase()
+            };
+        }
+
+        // Fallback
+        const cleanFrom = fromString.trim();
+        return {
+            name: cleanFrom.length > 40 ? cleanFrom.substring(0, 40) + '...' : cleanFrom,
+            email: cleanFrom,
+            initials: cleanFrom.substring(0, 2).toUpperCase(),
+        };
     };
 
     const formatTime = (dateStr: string) => {
@@ -108,8 +166,7 @@ export function EmailCard({ thread, message, onOpenPanel, trustScore = 3 }: Emai
         analyze();
     }, [thread?.id]);
 
-    const senderFrom = getSenderFrom();
-    const sender = extractSender(senderFrom);
+    const sender = extractSenderFromThread(thread, message);
     const intent = intentConfig[analysis?.intent || 'fyi_informational'];
 
     if (loading) {

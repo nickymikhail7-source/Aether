@@ -452,12 +452,18 @@ textarea:focus-visible {
   display: none !important;
 }
 
-/* FORCE EMAIL CONTENT TO BE READABLE */
+/* Force email content to be readable */
 .email-body-content,
-.email-body-content * {
+.email-body-content *,
+.email-body-content p,
+.email-body-content span,
+.email-body-content div,
+.email-body-content td,
+.email-body-content th,
+.email-body-content li {
   color: #e5e5e5 !important;
-  background: transparent !important;
   background-color: transparent !important;
+  background: transparent !important;
 }
 
 .email-body-content a {
@@ -468,30 +474,9 @@ textarea:focus-visible {
 .email-body-content img {
   max-width: 100% !important;
   height: auto !important;
-  border-radius: 8px;
-  margin: 12px 0;
 }
 
-.email-body-content table,
-.email-body-content td,
-.email-body-content th,
-.email-body-content tr {
-  background: transparent !important;
-  border-color: rgba(255, 255, 255, 0.1) !important;
-}
-
-.email-body-content h1,
-.email-body-content h2,
-.email-body-content h3 {
-  color: #ffffff !important;
-}
-
-.email-body-content p {
-  margin-bottom: 12px;
-  line-height: 1.7;
-}
-
-/* Slide in animation */
+/* Animation */
 @keyframes slideIn {
   from {
     transform: translateX(100%);
