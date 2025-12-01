@@ -38,6 +38,112 @@ body {
   font-size: 15px;
 }
 
+/* Zero-Read Inbox Styles */
+
+/* Smooth transitions */
+* {
+  transition-property: background-color, border-color, color, opacity, transform;
+  transition-timing-function: ease;
+  transition-duration: 150ms;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Email content prose overrides */
+.prose-invert {
+  --tw-prose-body: rgba(255, 255, 255, 0.7);
+  --tw-prose-headings: #ffffff;
+  --tw-prose-links: #818cf8;
+}
+
+.prose img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+
+.prose a {
+  color: #818cf8;
+  text-decoration: underline;
+}
+
+.prose a:hover {
+  color: #a5b4fc;
+}
+
+/* Hide ugly email elements */
+.prose table,
+.prose tr,
+.prose td {
+  border: none !important;
+  background: transparent !important;
+}
+
+/* Gradient text utility */
+.gradient-text {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6, #a855f7);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Glow effect */
+.glow {
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+}
+
+/* Skeleton loading animation */
+@keyframes shimmer {
+  0% {
+    opacity: 0.5;
+  }
+
+  50% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse {
+  animation: shimmer 2s ease-in-out infinite;
+}
+
+/* Fade in animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
 /* ISSUE 1: Text is too dark and unreadable */
 .email-content,
 .email-content * {
@@ -141,4 +247,263 @@ body {
 
 .email-content li {
   margin-bottom: 8px;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in {
+  animation: slideIn 0.25s ease-out forwards;
+}
+
+/* Premium Dark Theme */
+body {
+  background-color: #050505;
+  color: #ffffff;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Card hover effect */
+.email-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.email-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+/* Prose overrides for email content */
+.prose-invert {
+  --tw-prose-body: rgba(255, 255, 255, 0.8);
+  --tw-prose-headings: #ffffff;
+  --tw-prose-links: #818cf8;
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6, #a855f7);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Glow effects */
+.glow-indigo {
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+.animate-slide-in {
+  animation: slideIn 0.25s ease-out forwards;
+}
+
+/* Focus states */
+button:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid rgba(99, 102, 241, 0.5);
+  outline-offset: 2px;
+}
+
+/* Loading pulse */
+@keyframes pulse {
+
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+
+  50% {
+    opacity: 0.8;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Force email content to be readable on dark background */
+.email-content,
+.email-content * {
+  color: #e5e5e5 !important;
+  background-color: transparent !important;
+}
+
+.email-content a {
+  color: #818cf8 !important;
+  text-decoration: underline;
+}
+
+.email-content a:hover {
+  color: #a5b4fc !important;
+}
+
+.email-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin: 12px 0;
+}
+
+.email-content h1,
+.email-content h2,
+.email-content h3,
+.email-content h4 {
+  color: #ffffff !important;
+  font-weight: 600;
+  margin-top: 16px;
+  margin-bottom: 8px;
+}
+
+.email-content p {
+  margin-bottom: 12px;
+  line-height: 1.7;
+}
+
+.email-content ul,
+.email-content ol {
+  margin: 12px 0;
+  padding-left: 20px;
+}
+
+.email-content li {
+  margin-bottom: 6px;
+}
+
+.email-content table {
+  border: none !important;
+}
+
+.email-content td,
+.email-content th {
+  border: none !important;
+  padding: 8px;
+}
+
+.email-content blockquote {
+  border-left: 3px solid #6366f1;
+  padding-left: 16px;
+  margin: 12px 0;
+  color: #a3a3a3 !important;
+}
+
+/* Hide tracking pixels */
+.email-content img[width="1"],
+.email-content img[height="1"] {
+  display: none !important;
+}
+
+/* FORCE EMAIL CONTENT TO BE READABLE */
+.email-body-content,
+.email-body-content * {
+  color: #e5e5e5 !important;
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+.email-body-content a {
+  color: #818cf8 !important;
+  text-decoration: underline !important;
+}
+
+.email-body-content img {
+  max-width: 100% !important;
+  height: auto !important;
+  border-radius: 8px;
+  margin: 12px 0;
+}
+
+.email-body-content table,
+.email-body-content td,
+.email-body-content th,
+.email-body-content tr {
+  background: transparent !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.email-body-content h1,
+.email-body-content h2,
+.email-body-content h3 {
+  color: #ffffff !important;
+}
+
+.email-body-content p {
+  margin-bottom: 12px;
+  line-height: 1.7;
+}
+
+/* Slide in animation */
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in {
+  animation: slideIn 0.25s ease-out forwards;
 }

@@ -1,0 +1,13 @@
+[2025-12-01T06:31:13.939Z] Draft API called
+[2025-12-01T06:31:13.991Z] Draft API Body: {
+  "subject": "Test Subject",
+  "messages": [
+    {
+      "from": "sender@example.com",
+      "body": "Hello, how are you?",
+      "date": "2023-10-27T10:00:00Z"
+    }
+  ]
+}
+[2025-12-01T06:31:13.991Z] Draft API: Generating draft...
+[2025-12-01T06:31:18.792Z] Draft API: Draft generated successfully

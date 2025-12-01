@@ -9,7 +9,12 @@ export interface GmailThread {
     lastMessageDate: Date
     unread: boolean
     messageCount: number
+    lastSender: string
 }
+
+// ... (inside parseThread)
+
+
 
 export interface GmailMessage {
     id: string
@@ -51,6 +56,7 @@ export async function listThreads(
         notifications: 'is:inbox category:updates',
         sent: 'is:sent',
         drafts: 'is:draft',
+        all: 'is:inbox',
     }
 
     const q = queries[category] || queries.priority
@@ -124,6 +130,9 @@ function parseThread(thread: any): GmailThread | null {
     const dateHeader = getHeader(lastMessage.payload?.headers || [], 'Date')
     const lastMessageDate = dateHeader ? new Date(dateHeader) : new Date()
 
+    // Get last sender
+    const lastSender = getHeader(lastMessage.payload?.headers || [], 'From') || ''
+
     return {
         id: thread.id,
         subject,
@@ -132,6 +141,7 @@ function parseThread(thread: any): GmailThread | null {
         lastMessageDate,
         unread,
         messageCount: messages.length,
+        lastSender,
     }
 }
 
@@ -184,7 +194,7 @@ function parseMessage(message: any): GmailMessage | null {
     return {
         id: message.id,
         threadId: message.threadId,
-        from: extractName(from) || extractEmail(from),
+        from: from, // Return full string so frontend can parse name and email
         to: to.split(',').map((email) => email.trim()),
         subject,
         date: dateStr ? new Date(dateStr) : new Date(),
