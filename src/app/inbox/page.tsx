@@ -72,17 +72,26 @@ function ReplyInput({
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    threadId: thread.thread.id,
-                    context: thread.messages?.map((m: any) => m.body).join('\n\n---\n\n'),
+                    subject: thread.thread.subject,
+                    messages: thread.messages.map((m: any) => ({
+                        from: m.from,
+                        body: m.body,
+                        date: m.date
+                    })),
                 }),
             });
 
             const data = await response.json();
+
             if (data.draft) {
                 setMessage(data.draft);
+            } else if (data.error) {
+                console.error('Draft API returned error:', data.error);
+                onError(data.error);
             }
         } catch (error) {
             console.error('Failed to generate draft:', error);
+            onError('Failed to generate draft');
         } finally {
             setDraftLoading(false);
         }
