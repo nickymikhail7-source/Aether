@@ -46,8 +46,15 @@ export function EmailCard({ thread, message, onOpenPanel, trustScore = 3 }: Emai
         // Try multiple sources for the "from" field
         let fromString = '';
 
+        // Source 0: Pre-parsed lastSender (from our custom GmailThread interface)
+        if (thread?.lastSender) {
+            fromString = thread.lastSender;
+        }
+        else if (message?.lastSender) {
+            fromString = message.lastSender;
+        }
         // Source 1: Direct message.from
-        if (message?.from && message.from.trim()) {
+        else if (message?.from && message.from.trim()) {
             fromString = message.from;
         }
         // Source 2: Thread's first message payload headers
@@ -202,6 +209,11 @@ export function EmailCard({ thread, message, onOpenPanel, trustScore = 3 }: Emai
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 mb-1">
                         <h3 className="font-semibold text-white text-lg truncate">{sender.name}</h3>
+                        {sender.email && (
+                            <span className="text-white/40 text-sm font-normal truncate max-w-[200px]">
+                                &lt;{sender.email}&gt;
+                            </span>
+                        )}
                         <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${intent.bgColor} ${intent.textColor}`}>
                             <span>{intent.icon}</span>
                             <span>{intent.label}</span>
