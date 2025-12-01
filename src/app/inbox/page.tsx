@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { extractSenderInfo, formatDate } from '@/lib/email-formatter'
 import { extractCalendarDetails } from '@/lib/email-utils'
 import { EmailContent } from '@/components/EmailContent'
+import { Toast } from '@/components/Toast'
 
 interface GmailThread {
     id: string
@@ -39,6 +40,154 @@ interface ActionItem {
     completed: boolean
 }
 
+
+function ReplyInput({
+    thread,
+    lastMessage,
+    onSent,
+    onError
+}: {
+    thread: ThreadDetail;
+    lastMessage: GmailMessage;
+    onSent: () => void;
+    onError: (msg: string) => void;
+}) {
+    const [message, setMessage] = useState('');
+    const [sending, setSending] = useState(false);
+    const [draftLoading, setDraftLoading] = useState(false);
+
+    // Extract recipient from last message
+    const getRecipient = () => {
+        // If last message is from me, reply to the original sender
+        // Otherwise reply to whoever sent the last message
+        const from = lastMessage?.from || '';
+        const match = from.match(/<([^>]+)>/) || [null, from];
+        return match[1] || from;
+    };
+
+    const handleDraftWithAI = async () => {
+        setDraftLoading(true);
+        try {
+            const response = await fetch('/api/ai/draft', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    threadId: thread.thread.id,
+                    context: thread.messages?.map((m: any) => m.body).join('\n\n---\n\n'),
+                }),
+            });
+
+            const data = await response.json();
+            if (data.draft) {
+                setMessage(data.draft);
+            }
+        } catch (error) {
+            console.error('Failed to generate draft:', error);
+        } finally {
+            setDraftLoading(false);
+        }
+    };
+
+    const handleSend = async () => {
+        if (!message.trim() || sending) return;
+
+        setSending(true);
+        try {
+            const response = await fetch('/api/gmail/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    to: getRecipient(),
+                    subject: thread.thread.subject,
+                    message: message.replace(/\n/g, '<br>'), // Convert newlines to HTML
+                    threadId: thread.thread.id,
+                    replyToMessageId: lastMessage?.id,
+                }),
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                setMessage('');
+                onSent();
+            } else {
+                console.error('Failed to send:', data.error);
+                onError(data.error || 'Failed to send reply');
+            }
+        } catch (error) {
+            console.error('Send error:', error);
+            onError('Failed to send reply');
+        } finally {
+            setSending(false);
+        }
+    };
+
+    return (
+        <div className="p-6 bg-gradient-to-t from-background via-background to-transparent sticky bottom-0 z-10">
+            <div className="glass rounded-2xl p-4 shadow-2xl shadow-black/50 backdrop-blur-xl border-border-bright">
+                {/* Recipient indicator */}
+                <div className="flex items-center gap-2 mb-3 text-xs text-text-muted">
+                    <span>Reply to:</span>
+                    <span className="text-text-primary font-medium">{getRecipient()}</span>
+                </div>
+
+                {/* Draft with AI button */}
+                <button
+                    onClick={handleDraftWithAI}
+                    disabled={draftLoading}
+                    className="flex items-center gap-2 mb-3 px-3 py-1.5 rounded-lg bg-surface-hover/50 hover:bg-surface-hover text-text-secondary hover:text-white text-xs transition disabled:opacity-50"
+                >
+                    {draftLoading ? (
+                        <>
+                            <span className="animate-spin">⏳</span>
+                            <span>Generating...</span>
+                        </>
+                    ) : (
+                        <>
+                            <span>✨</span>
+                            <span>Draft with AI</span>
+                        </>
+                    )}
+                </button>
+
+                {/* Message Input */}
+                <div className="flex gap-3">
+                    <textarea
+                        value={message}
+                        onChange={(e) => setMessage(e.target.value)}
+                        placeholder="Type your reply..."
+                        rows={3}
+                        className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-text-primary placeholder-text-muted resize-none focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/50 text-sm"
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' && e.metaKey) {
+                                handleSend();
+                            }
+                        }}
+                    />
+
+                    {/* Send Button */}
+                    <button
+                        onClick={handleSend}
+                        disabled={!message.trim() || sending}
+                        className="self-end px-6 py-3 rounded-xl bg-gradient-to-r from-accent to-purple-600 text-white font-medium hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-accent/20"
+                    >
+                        {sending ? (
+                            <span className="animate-spin">↻</span>
+                        ) : (
+                            'Send'
+                        )}
+                    </button>
+                </div>
+
+                {/* Keyboard shortcut hint */}
+                <div className="mt-2 text-[10px] text-text-muted text-right">
+                    Press ⌘ + Enter to send
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export default function InboxPage() {
     const { data: session, status } = useSession()
     const router = useRouter()
@@ -50,9 +199,8 @@ export default function InboxPage() {
     const [aiSummary, setAiSummary] = useState<string | null>(null)
     const [actionItems, setActionItems] = useState<ActionItem[]>([])
     const [loadingAI, setLoadingAI] = useState(false)
-    const [loadingDraft, setLoadingDraft] = useState(false)
-    const [replyText, setReplyText] = useState('')
     const [selectedCategory, setSelectedCategory] = useState('priority')
+    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
     const messagesEndRef = useRef<HTMLDivElement>(null)
     const messageContainerRef = useRef<HTMLDivElement>(null)
 
@@ -118,7 +266,6 @@ export default function InboxPage() {
             setThreadDetail(null)
             setAiSummary(null)
             setActionItems([])
-            setReplyText('')
 
             const response = await fetch(`/api/gmail/threads/${threadId}`)
 
@@ -133,6 +280,21 @@ export default function InboxPage() {
             console.error('Error fetching thread:', err)
         } finally {
             setLoadingThread(false)
+        }
+    }
+
+    async function refreshThread() {
+        if (!selectedThreadId) return
+
+        try {
+            const response = await fetch(`/api/gmail/threads/${selectedThreadId}`)
+            if (response.ok) {
+                const data = await response.json()
+                setThreadDetail(data)
+                setToast({ message: 'Reply sent successfully!', type: 'success' })
+            }
+        } catch (error) {
+            console.error('Error refreshing thread:', error)
         }
     }
 
@@ -184,34 +346,7 @@ export default function InboxPage() {
         }
     }
 
-    async function generateDraft() {
-        if (!threadDetail) return
 
-        try {
-            setLoadingDraft(true)
-            const response = await fetch('/api/ai/draft', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    subject: threadDetail.thread.subject,
-                    messages: threadDetail.messages.map(m => ({
-                        from: m.from,
-                        body: m.body,
-                        date: m.date,
-                    })),
-                }),
-            })
-
-            if (response.ok) {
-                const data = await response.json()
-                setReplyText(data.draft)
-            }
-        } catch (error) {
-            console.error('Error generating draft:', error)
-        } finally {
-            setLoadingDraft(false)
-        }
-    }
 
     function toggleActionItem(index: number) {
         setActionItems(items =>
@@ -510,54 +645,12 @@ export default function InboxPage() {
                         </div>
 
                         {/* Reply Input */}
-                        <div className="p-6 bg-gradient-to-t from-background via-background to-transparent sticky bottom-0 z-10">
-                            <div className="glass rounded-2xl p-2 shadow-2xl shadow-black/50 backdrop-blur-xl border-border-bright">
-                                <div className="flex items-start space-x-2 mb-2 px-2 pt-2">
-                                    <button
-                                        onClick={generateDraft}
-                                        disabled={loadingDraft}
-                                        className="group flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-surface-hover/50 hover:bg-surface-hover transition-all duration-200 disabled:opacity-50"
-                                    >
-                                        {loadingDraft ? (
-                                            <div className="w-3 h-3 border-2 border-text-secondary border-t-transparent rounded-full animate-spin" />
-                                        ) : (
-                                            <span className="text-sm">✨</span>
-                                        )}
-                                        <span className="text-xs font-medium text-text-secondary group-hover:text-text-primary transition-colors">
-                                            {loadingDraft ? 'Drafting...' : 'Draft with AI'}
-                                        </span>
-                                    </button>
-                                </div>
-                                <div className="flex items-end space-x-2">
-                                    <div className="flex-1 bg-transparent px-4 py-2">
-                                        <input
-                                            type="text"
-                                            value={replyText}
-                                            onChange={(e) => setReplyText(e.target.value)}
-                                            placeholder="Type a message..."
-                                            className="w-full bg-transparent text-text-primary placeholder-text-muted outline-none text-sm font-light"
-                                        />
-                                    </div>
-
-                                    <button
-                                        className="w-8 h-8 rounded-full bg-surface-hover hover:bg-surface-elevated flex items-center justify-center transition-colors flex-shrink-0 group"
-                                        title="Voice input"
-                                    >
-                                        <svg className="w-4 h-4 text-text-secondary group-hover:text-text-primary transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                                        </svg>
-                                    </button>
-
-                                    <button
-                                        className="w-8 h-8 rounded-full bg-gradient-to-br from-accent to-purple flex items-center justify-center transition-transform hover:scale-105 active:scale-95 flex-shrink-0 shadow-lg shadow-accent/20"
-                                    >
-                                        <svg className="w-4 h-4 text-white ml-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                                        </svg>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
+                        <ReplyInput
+                            thread={threadDetail}
+                            lastMessage={threadDetail.messages[threadDetail.messages.length - 1]}
+                            onSent={refreshThread}
+                            onError={(msg) => setToast({ message: msg, type: 'error' })}
+                        />
                     </>
                 ) : selectedThreadId && loadingThread ? (
                     <div className="flex-1 flex items-center justify-center">
@@ -584,6 +677,13 @@ export default function InboxPage() {
                     </div>
                 )}
             </div>
+            {toast && (
+                <Toast
+                    message={toast.message}
+                    type={toast.type}
+                    onClose={() => setToast(null)}
+                />
+            )}
         </div>
     )
 }

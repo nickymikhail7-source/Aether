@@ -1,4 +1,4 @@
-import { google } from 'googleapis'
+import { google, gmail_v1 } from 'googleapis'
 import { Session } from 'next-auth'
 
 export interface GmailThread {
@@ -270,4 +270,101 @@ function decodeBase64(data: string): string {
 
     // Decode from base64
     return Buffer.from(base64, 'base64').toString('utf-8')
+}
+
+/**
+ * Sends an email using the Gmail API
+ */
+export async function sendEmail(
+    client: gmail_v1.Gmail,
+    options: {
+        to: string;
+        subject: string;
+        body: string;
+        threadId?: string;
+        inReplyTo?: string;
+        references?: string;
+    }
+): Promise<{ success: boolean; messageId?: string; error?: string }> {
+    try {
+        const { to, subject, body, threadId, inReplyTo, references } = options;
+
+        // Build email headers
+        const headers = [
+            `To: ${to}`,
+            `Subject: ${subject}`,
+            `Content-Type: text/html; charset=utf-8`,
+            `MIME-Version: 1.0`,
+        ];
+
+        // Add reply headers if replying to a thread
+        if (inReplyTo) {
+            headers.push(`In-Reply-To: ${inReplyTo}`);
+        }
+        if (references) {
+            headers.push(`References: ${references}`);
+        }
+
+        // Build the email
+        const email = [
+            ...headers,
+            '',
+            body
+        ].join('\r\n');
+
+        // Encode to base64url
+        const encodedEmail = Buffer.from(email)
+            .toString('base64')
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=+$/, '');
+
+        // Send via Gmail API
+        const response = await client.users.messages.send({
+            userId: 'me',
+            requestBody: {
+                raw: encodedEmail,
+                threadId: threadId, // Keep in same thread
+            },
+        });
+
+        return {
+            success: true,
+            messageId: response.data.id || undefined,
+        };
+    } catch (error: any) {
+        console.error('Error sending email:', error);
+        return {
+            success: false,
+            error: error.message || 'Failed to send email',
+        };
+    }
+}
+
+/**
+ * Helper to get message headers for reply
+ */
+export async function getMessageHeaders(
+    client: gmail_v1.Gmail,
+    messageId: string
+): Promise<{ messageId: string; subject: string; from: string } | null> {
+    try {
+        const response = await client.users.messages.get({
+            userId: 'me',
+            id: messageId,
+            format: 'metadata',
+            metadataHeaders: ['Message-ID', 'Subject', 'From'],
+        });
+
+        const headers = response.data.payload?.headers || [];
+
+        return {
+            messageId: headers.find(h => h.name === 'Message-ID')?.value || '',
+            subject: headers.find(h => h.name === 'Subject')?.value || '',
+            from: headers.find(h => h.name === 'From')?.value || '',
+        };
+    } catch (error) {
+        console.error('Error getting message headers:', error);
+        return null;
+    }
 }
