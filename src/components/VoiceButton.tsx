@@ -7,9 +7,10 @@ interface VoiceButtonProps {
     onTranscription: (text: string) => void;
     size?: 'sm' | 'md' | 'lg';
     className?: string;
+    showLabel?: boolean;
 }
 
-export function VoiceButton({ onTranscription, size = 'md', className = '' }: VoiceButtonProps) {
+export function VoiceButton({ onTranscription, size = 'md', className = '', showLabel = false }: VoiceButtonProps) {
     const {
         isRecording,
         isTranscribing,
@@ -63,14 +64,14 @@ export function VoiceButton({ onTranscription, size = 'md', className = '' }: Vo
                 disabled={isTranscribing}
                 title={isRecording ? 'Click to stop' : 'Click to record'}
                 className={`
-          relative flex items-center justify-center rounded-xl transition-all duration-200
+          relative flex items-center justify-center rounded-xl transition-all duration-200 gap-2
           ${isRecording
                         ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/30'
                         : isTranscribing
                             ? 'bg-indigo-500/50 text-white cursor-wait'
                             : 'bg-white/10 hover:bg-white/20 text-white/70 hover:text-white'
                     }
-          ${sizeClasses[size]}
+          ${showLabel ? 'px-4 py-2 w-auto h-auto' : sizeClasses[size]}
           ${className}
         `}
             >
@@ -82,7 +83,13 @@ export function VoiceButton({ onTranscription, size = 'md', className = '' }: Vo
                     <span>🎙️</span>
                 )}
 
-                {isRecording && (
+                {showLabel && (
+                    <span className="font-medium">
+                        {isRecording ? 'Stop Recording' : isTranscribing ? 'Transcribing...' : 'Voice Command'}
+                    </span>
+                )}
+
+                {isRecording && !showLabel && (
                     <span className="absolute inset-0 rounded-xl border-2 border-red-400 animate-ping opacity-75" />
                 )}
             </button>
@@ -101,7 +108,7 @@ export function VoiceButton({ onTranscription, size = 'md', className = '' }: Vo
                 </div>
             )}
 
-            {isTranscribing && (
+            {isTranscribing && !showLabel && (
                 <span className="text-indigo-400 text-sm">Transcribing...</span>
             )}
 
