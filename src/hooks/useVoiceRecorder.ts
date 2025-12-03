@@ -28,7 +28,6 @@ export function useVoiceRecorder(): UseVoiceRecorderReturn {
             setError(null);
             setRecordingTime(0);
 
-            // Request microphone access
             const stream = await navigator.mediaDevices.getUserMedia({
                 audio: {
                     echoCancellation: true,
@@ -39,7 +38,6 @@ export function useVoiceRecorder(): UseVoiceRecorderReturn {
 
             streamRef.current = stream;
 
-            // Determine supported MIME type
             const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
                 ? 'audio/webm;codecs=opus'
                 : MediaRecorder.isTypeSupported('audio/webm')
@@ -59,26 +57,23 @@ export function useVoiceRecorder(): UseVoiceRecorderReturn {
             mediaRecorder.start(100);
             setIsRecording(true);
 
-            // Start timer
             timerRef.current = setInterval(() => {
                 setRecordingTime(prev => prev + 1);
             }, 1000);
 
         } catch (err: any) {
-            console.error('Recording error:', err);
             if (err.name === 'NotAllowedError') {
-                setError('Microphone access denied. Please allow microphone access in your browser settings.');
+                setError('Microphone access denied');
             } else if (err.name === 'NotFoundError') {
-                setError('No microphone found. Please connect a microphone.');
+                setError('No microphone found');
             } else {
-                setError('Failed to start recording. Please try again.');
+                setError('Failed to start recording');
             }
         }
     }, []);
 
     const stopRecording = useCallback(async (): Promise<string | null> => {
         return new Promise((resolve) => {
-            // Clear timer
             if (timerRef.current) {
                 clearInterval(timerRef.current);
                 timerRef.current = null;
@@ -95,18 +90,15 @@ export function useVoiceRecorder(): UseVoiceRecorderReturn {
                 setIsTranscribing(true);
 
                 try {
-                    // Create audio blob
                     const mimeType = mediaRecorderRef.current?.mimeType || 'audio/webm';
                     const audioBlob = new Blob(chunksRef.current, { type: mimeType });
 
-                    // Check if we have audio data
                     if (audioBlob.size < 1000) {
-                        setError('Recording too short. Please try again.');
+                        setError('Recording too short');
                         resolve(null);
                         return;
                     }
 
-                    // Send to transcription API
                     const formData = new FormData();
                     formData.append('audio', audioBlob, 'recording.webm');
 
@@ -117,24 +109,21 @@ export function useVoiceRecorder(): UseVoiceRecorderReturn {
 
                     if (response.ok) {
                         const data = await response.json();
-                        if (data.text && data.text.trim()) {
+                        if (data.text?.trim()) {
                             resolve(data.text.trim());
                         } else {
-                            setError('Could not understand audio. Please try again.');
+                            setError('Could not understand audio');
                             resolve(null);
                         }
                     } else {
-                        const errorData = await response.json();
-                        setError(errorData.error || 'Transcription failed. Please try again.');
+                        setError('Transcription failed');
                         resolve(null);
                     }
                 } catch (err) {
-                    console.error('Transcription error:', err);
-                    setError('Failed to process audio. Please try again.');
+                    setError('Failed to process audio');
                     resolve(null);
                 } finally {
                     setIsTranscribing(false);
-                    // Stop all tracks
                     streamRef.current?.getTracks().forEach(track => track.stop());
                 }
             };
@@ -148,11 +137,9 @@ export function useVoiceRecorder(): UseVoiceRecorderReturn {
             clearInterval(timerRef.current);
             timerRef.current = null;
         }
-
         if (mediaRecorderRef.current && isRecording) {
             mediaRecorderRef.current.stop();
         }
-
         streamRef.current?.getTracks().forEach(track => track.stop());
         setIsRecording(false);
         setRecordingTime(0);

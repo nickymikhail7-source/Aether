@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { VoiceButton } from './VoiceButton';
-import { EmailCard } from './EmailCard';
 
 interface EmailPanelProps {
     thread: any;
@@ -10,37 +9,25 @@ interface EmailPanelProps {
     onClose: () => void;
 }
 
-type ReplyMode = 'intent' | 'write' | 'auto';
-
-// Smart suggestion chips based on email type
-const intentSuggestions = [
-    { emoji: '👍', label: 'Acknowledge', prompt: 'acknowledge receipt and thank them' },
-    { emoji: '📅', label: 'Schedule', prompt: 'suggest scheduling a meeting' },
-    { emoji: '❓', label: 'Ask Question', prompt: 'ask for more details' },
-    { emoji: '✅', label: 'Confirm', prompt: 'confirm and agree' },
-    { emoji: '❌', label: 'Decline', prompt: 'politely decline' },
-    { emoji: '⏰', label: 'Delay', prompt: 'ask for more time' },
-    { emoji: '🔄', label: 'Follow Up', prompt: 'follow up on previous discussion' },
-    { emoji: '📎', label: 'Share Info', prompt: 'share requested information' },
-];
+type ReplyMode = 'select' | 'auto' | 'write';
 
 export function EmailPanel({ thread, isOpen, onClose }: EmailPanelProps) {
+    // Thread/messages state
     const [messages, setMessages] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [replyMode, setReplyMode] = useState<ReplyMode | null>(null);
 
-    // Intent mode state
-    const [userIntent, setUserIntent] = useState('');
-    const [selectedChips, setSelectedChips] = useState<string[]>([]);
+    // Reply state
+    const [replyMode, setReplyMode] = useState<ReplyMode>('select');
+    const [userMessage, setUserMessage] = useState('');
+    const [generatedReply, setGeneratedReply] = useState('');
+    const [subject, setSubject] = useState('');
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [isPolishing, setIsPolishing] = useState(false);
+    const [isSending, setIsSending] = useState(false);
+    const [showPolished, setShowPolished] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-    // Write mode state
-    const [manualReply, setManualReply] = useState('');
-
-    // Generated draft
-    const [generatedDraft, setGeneratedDraft] = useState('');
-    const [draftLoading, setDraftLoading] = useState(false);
-    const [showDraft, setShowDraft] = useState(false);
-
+    // Load thread when opened
     useEffect(() => {
         if (isOpen && thread?.id) {
             loadThread();
@@ -49,20 +36,25 @@ export function EmailPanel({ thread, isOpen, onClose }: EmailPanelProps) {
     }, [isOpen, thread?.id]);
 
     const resetReplyState = () => {
-        setReplyMode(null);
-        setUserIntent('');
-        setSelectedChips([]);
-        setManualReply('');
-        setGeneratedDraft('');
-        setShowDraft(false);
+        setReplyMode('select');
+        setUserMessage('');
+        setGeneratedReply('');
+        setSubject('');
+        setShowPolished(false);
+        setError(null);
     };
 
     const loadThread = async () => {
         setLoading(true);
         try {
             const res = await fetch(`/api/gmail/threads/${thread.id}`);
-            const data = await res.json();
-            setMessages(data.messages || []);
+            if (res.ok) {
+                const data = await res.json();
+                setMessages(data.messages || []);
+                // Set reply subject
+                const originalSubject = thread?.subject || '';
+                setSubject(originalSubject.startsWith('Re:') ? originalSubject : `Re: ${originalSubject}`);
+            }
         } catch (e) {
             console.error('Failed to load thread:', e);
         } finally {
@@ -70,6 +62,7 @@ export function EmailPanel({ thread, isOpen, onClose }: EmailPanelProps) {
         }
     };
 
+    // Extract sender info
     const extractSender = (from: string) => {
         if (!from) return { name: 'Unknown', email: '', initials: 'UN' };
         const match = from.match(/^"?([^"<]+)"?\s*<?([^>]*)>?$/);
@@ -84,62 +77,137 @@ export function EmailPanel({ thread, isOpen, onClose }: EmailPanelProps) {
                     : name.slice(0, 2).toUpperCase()
             };
         }
-        return { name: from.split('@')[0], email: from, initials: from.slice(0, 2).toUpperCase() };
+        const email = from.includes('@') ? from : '';
+        return { name: from.split('@')[0], email, initials: from.slice(0, 2).toUpperCase() };
     };
 
-    const toggleChip = (prompt: string) => {
-        setSelectedChips(prev =>
-            prev.includes(prompt)
-                ? prev.filter(p => p !== prompt)
-                : [...prev, prompt]
-        );
-    };
-
-    const generateDraft = async (mode: 'intent' | 'auto' | 'improve') => {
-        setDraftLoading(true);
-        setShowDraft(true);
+    // AUTO REPLY: Generate response automatically
+    const handleAutoReply = async () => {
+        console.log('Auto Reply clicked');
+        setReplyMode('auto');
+        setIsGenerating(true);
+        setError(null);
 
         try {
             const lastMessage = messages[messages.length - 1];
 
-            let replyContext = '';
-            if (mode === 'intent') {
-                const chipText = selectedChips.length > 0 ? selectedChips.join(', ') : '';
-                const intentText = userIntent.trim();
-                replyContext = [chipText, intentText].filter(Boolean).join('. Also: ');
-                if (!replyContext) {
-                    replyContext = 'Write an appropriate professional reply';
-                }
-            } else if (mode === 'improve') {
-                replyContext = `Improve this draft: ${manualReply}`;
-            } else {
-                replyContext = 'Write an appropriate professional reply based on the email context';
-            }
-
-            const res = await fetch('/api/ai/draft', {
+            const res = await fetch('/api/ai/auto-reply', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     originalEmail: lastMessage?.body || lastMessage?.snippet || '',
                     subject: thread?.subject || '',
                     from: lastMessage?.from || '',
-                    replyContext,
-                    mode: mode === 'improve' ? 'full' : mode,
                 }),
             });
 
             if (res.ok) {
                 const data = await res.json();
-                setGeneratedDraft(data.draft);
-                setManualReply(data.draft);
-                setReplyMode('write'); // Switch to write mode to show editable draft
+                setGeneratedReply(data.reply);
+            } else {
+                setError('Failed to generate reply. Please try again.');
+                setReplyMode('select');
             }
         } catch (e) {
-            console.error('Draft generation failed:', e);
-            setGeneratedDraft('Failed to generate draft. Please try again.');
+            console.error('Auto reply error:', e);
+            setError('Failed to generate reply. Please try again.');
+            setReplyMode('select');
         } finally {
-            setDraftLoading(false);
+            setIsGenerating(false);
         }
+    };
+
+    // WRITE REPLY: User writes their own
+    const handleWriteReply = () => {
+        console.log('Write Reply clicked');
+        setReplyMode('write');
+        setUserMessage('');
+        setGeneratedReply('');
+        setShowPolished(false);
+    };
+
+    // Polish user's message
+    const handlePolish = async () => {
+        if (!userMessage.trim()) {
+            setError('Please write a message first');
+            return;
+        }
+
+        setIsPolishing(true);
+        setError(null);
+
+        try {
+            const lastMessage = messages[messages.length - 1];
+            const sender = extractSender(lastMessage?.from || '');
+
+            const res = await fetch('/api/ai/polish', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    rawMessage: userMessage,
+                    recipientName: sender.name,
+                    senderName: 'Nikhil', // Get from session
+                    isReply: true,
+                }),
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                setGeneratedReply(data.body);
+                setShowPolished(true);
+            } else {
+                setError('Failed to polish message');
+            }
+        } catch (e) {
+            setError('Failed to polish message');
+        } finally {
+            setIsPolishing(false);
+        }
+    };
+
+    // Send the reply
+    const handleSend = async () => {
+        const replyBody = showPolished ? generatedReply : (replyMode === 'auto' ? generatedReply : userMessage);
+
+        if (!replyBody.trim()) {
+            setError('Please write a message');
+            return;
+        }
+
+        setIsSending(true);
+        setError(null);
+
+        try {
+            const lastMessage = messages[messages.length - 1];
+            const sender = extractSender(lastMessage?.from || '');
+
+            const res = await fetch('/api/gmail/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    to: sender.email,
+                    subject: subject,
+                    message: replyBody,
+                    threadId: thread?.id,
+                }),
+            });
+
+            if (res.ok) {
+                onClose();
+                // Could show success toast
+            } else {
+                setError('Failed to send reply');
+            }
+        } catch (e) {
+            setError('Failed to send reply');
+        } finally {
+            setIsSending(false);
+        }
+    };
+
+    // Voice input handler
+    const handleVoiceInput = (text: string) => {
+        setUserMessage(prev => prev ? `${prev} ${text}` : text);
     };
 
     if (!isOpen) return null;
@@ -147,18 +215,15 @@ export function EmailPanel({ thread, isOpen, onClose }: EmailPanelProps) {
     return (
         <>
             {/* Backdrop */}
-            <div
-                className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40"
-                onClick={onClose}
-            />
+            <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40" onClick={onClose} />
 
             {/* Panel */}
             <div className="fixed inset-y-0 right-0 w-[700px] max-w-full bg-[#0a0a0a] border-l border-white/10 shadow-2xl z-50 flex flex-col animate-slide-in">
 
                 {/* Header */}
-                <div className="flex items-start justify-between p-6 border-b border-white/10">
+                <div className="flex items-start justify-between p-5 border-b border-white/10">
                     <div className="flex-1 pr-4">
-                        <h2 className="text-xl font-semibold text-white mb-1">
+                        <h2 className="text-lg font-semibold text-white mb-1 leading-tight">
                             {thread?.subject || 'No Subject'}
                         </h2>
                         <p className="text-sm text-white/50">
@@ -170,7 +235,7 @@ export function EmailPanel({ thread, isOpen, onClose }: EmailPanelProps) {
                     </button>
                 </div>
 
-                {/* Email Content - Scrollable */}
+                {/* Email Content */}
                 <div className="flex-1 overflow-y-auto">
                     {loading ? (
                         <div className="flex items-center justify-center h-40">
@@ -181,7 +246,7 @@ export function EmailPanel({ thread, isOpen, onClose }: EmailPanelProps) {
                             {messages.map((msg, index) => {
                                 const sender = extractSender(msg.from);
                                 return (
-                                    <div key={index} className="p-6">
+                                    <div key={index} className="p-5">
                                         <div className="flex items-start gap-3 mb-4">
                                             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
                                                 {sender.initials}
@@ -189,7 +254,9 @@ export function EmailPanel({ thread, isOpen, onClose }: EmailPanelProps) {
                                             <div className="flex-1">
                                                 <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                                                     <span className="font-semibold text-white">{sender.name}</span>
-                                                    {sender.email && <span className="text-xs text-white/40">&lt;{sender.email}&gt;</span>}
+                                                    {sender.email && (
+                                                        <span className="text-xs text-white/40">&lt;{sender.email}&gt;</span>
+                                                    )}
                                                 </div>
                                                 <div className="text-xs text-white/40">
                                                     {msg.date ? new Date(msg.date).toLocaleString() : ''}
@@ -206,173 +273,276 @@ export function EmailPanel({ thread, isOpen, onClose }: EmailPanelProps) {
                     )}
                 </div>
 
-                {/* ═══════════════════════════════════════════════════════════════════ */}
-                {/* REPLY COMPOSER - THE NEW DESIGN                                     */}
-                {/* ═══════════════════════════════════════════════════════════════════ */}
+                {/* ════════════════════════════════════════════════════════════════════ */}
+                {/* REPLY SECTION                                                        */}
+                {/* ════════════════════════════════════════════════════════════════════ */}
 
                 <div className="border-t border-white/10 bg-[#0d0d0d]">
 
-                    {/* Mode Selection - Show when no mode selected */}
-                    {!replyMode && !showDraft && (
-                        <div className="p-5">
-                            <p className="text-sm font-medium text-white/80 mb-4">How would you like to reply?</p>
-
-                            <div className="grid grid-cols-3 gap-3">
-                                {/* Option 1: Quick Intent */}
-                                <button
-                                    onClick={() => setReplyMode('intent')}
-                                    className="p-4 rounded-xl bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border border-indigo-500/20 hover:border-indigo-500/40 transition-all text-left group"
-                                >
-                                    <span className="text-2xl mb-2 block">🎯</span>
-                                    <span className="font-medium text-white block mb-1">Quick Intent</span>
-                                    <span className="text-xs text-white/50">Tell me what to say</span>
-                                </button>
-
-                                {/* Option 2: Write Yourself */}
-                                <button
-                                    onClick={() => setReplyMode('write')}
-                                    className="p-4 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 transition-all text-left"
-                                >
-                                    <span className="text-2xl mb-2 block">📝</span>
-                                    <span className="font-medium text-white block mb-1">Write Myself</span>
-                                    <span className="text-xs text-white/50">Compose from scratch</span>
-                                </button>
-
-                                {/* Option 3: Auto Reply */}
-                                <button
-                                    onClick={() => generateDraft('auto')}
-                                    className="p-4 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 transition-all text-left"
-                                >
-                                    <span className="text-2xl mb-2 block">🤖</span>
-                                    <span className="font-medium text-white block mb-1">Auto Reply</span>
-                                    <span className="text-xs text-white/50">AI writes for you</span>
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
                     {/* ─────────────────────────────────────────────────────────────────── */}
-                    {/* INTENT MODE - Natural language + chips                              */}
+                    {/* MODE SELECT: Two clear options                                      */}
                     {/* ─────────────────────────────────────────────────────────────────── */}
 
-                    {replyMode === 'intent' && !showDraft && (
+                    {replyMode === 'select' && (
                         <div className="p-5">
-                            <div className="flex items-center justify-between mb-4">
-                                <p className="text-sm font-medium text-white/80">What do you want to say?</p>
-                                <button onClick={resetReplyState} className="text-xs text-white/40 hover:text-white/70">
-                                    ← Back
+                            <p className="text-sm font-medium text-white/70 mb-4">How would you like to reply?</p>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                {/* Auto Reply */}
+                                <button
+                                    type="button"
+                                    onClick={handleAutoReply}
+                                    className="p-4 rounded-xl bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border border-indigo-500/20 hover:border-indigo-500/40 hover:bg-indigo-500/10 transition-all text-left"
+                                >
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <span className="text-2xl">🤖</span>
+                                        <span className="font-semibold text-white">Auto Reply</span>
+                                    </div>
+                                    <p className="text-xs text-white/50">
+                                        AI generates a response based on the email — one click!
+                                    </p>
+                                </button>
+
+                                {/* Write Reply */}
+                                <button
+                                    type="button"
+                                    onClick={handleWriteReply}
+                                    className="p-4 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 hover:bg-white/10 transition-all text-left"
+                                >
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <span className="text-2xl">✍️</span>
+                                        <span className="font-semibold text-white">Write Reply</span>
+                                    </div>
+                                    <p className="text-xs text-white/50">
+                                        Type or speak your message — AI can polish it
+                                    </p>
                                 </button>
                             </div>
 
-                            {/* Voice + Text Input */}
-                            <div className="relative mb-4">
-                                <textarea
-                                    value={userIntent}
-                                    onChange={(e) => setUserIntent(e.target.value)}
-                                    placeholder="e.g., Thank them for the update, confirm I'm interested, ask about next steps..."
-                                    rows={3}
-                                    className="w-full px-4 py-3 pr-16 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 resize-none focus:outline-none focus:border-indigo-500/50"
-                                />
-
-                                {/* Voice Button */}
-                                <div className="absolute bottom-3 right-3">
-                                    <VoiceButton
-                                        onTranscription={(text) => setUserIntent(prev => prev ? `${prev} ${text}` : text)}
-                                        size="sm"
-                                    />
+                            {error && (
+                                <div className="mt-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+                                    ⚠️ {error}
                                 </div>
-                            </div>
-
-                            {/* Quick action chips */}
-                            <p className="text-xs text-white/50 mb-2">Or quick select:</p>
-                            <div className="flex flex-wrap gap-2 mb-4">
-                                {intentSuggestions.map((chip) => (
-                                    <button
-                                        key={chip.label}
-                                        onClick={() => toggleChip(chip.prompt)}
-                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-all ${selectedChips.includes(chip.prompt)
-                                            ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-300 border'
-                                            : 'bg-white/5 border border-white/10 text-white/70 hover:bg-white/10'
-                                            }`}
-                                    >
-                                        <span>{chip.emoji}</span>
-                                        <span>{chip.label}</span>
-                                    </button>
-                                ))}
-                            </div>
-
-                            {/* Generate button */}
-                            <button
-                                onClick={() => generateDraft('intent')}
-                                disabled={!userIntent.trim() && selectedChips.length === 0}
-                                className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-medium hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                            >
-                                <span>✨</span>
-                                <span>Generate Reply</span>
-                            </button>
+                            )}
                         </div>
                     )}
 
                     {/* ─────────────────────────────────────────────────────────────────── */}
-                    {/* WRITE MODE - Manual composition or editing generated draft          */}
+                    {/* AUTO REPLY: Generating or Preview                                   */}
+                    {/* ─────────────────────────────────────────────────────────────────── */}
+
+                    {replyMode === 'auto' && (
+                        <div className="p-5">
+                            {/* Back button */}
+                            <button
+                                onClick={resetReplyState}
+                                className="flex items-center gap-1 text-sm text-white/50 hover:text-white/70 mb-4"
+                            >
+                                ← Back to options
+                            </button>
+
+                            {isGenerating ? (
+                                <div className="flex flex-col items-center justify-center py-8">
+                                    <div className="animate-spin w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full mb-4" />
+                                    <p className="text-white/70">AI is writing your reply...</p>
+                                </div>
+                            ) : (
+                                <>
+                                    {/* Subject */}
+                                    <div className="mb-4">
+                                        <label className="block text-sm font-medium text-white/70 mb-2">Subject</label>
+                                        <input
+                                            type="text"
+                                            value={subject}
+                                            onChange={(e) => setSubject(e.target.value)}
+                                            className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-indigo-500/50"
+                                        />
+                                    </div>
+
+                                    {/* Generated Reply */}
+                                    <div className="mb-4">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <label className="text-sm font-medium text-white/70">🤖 AI Generated Reply</label>
+                                        </div>
+                                        <textarea
+                                            value={generatedReply}
+                                            onChange={(e) => setGeneratedReply(e.target.value)}
+                                            rows={8}
+                                            className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white resize-none focus:outline-none focus:border-indigo-500/50 leading-relaxed"
+                                        />
+                                    </div>
+
+                                    {/* Regenerate button */}
+                                    <button
+                                        onClick={handleAutoReply}
+                                        disabled={isGenerating}
+                                        className="mb-4 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 text-sm transition flex items-center gap-2"
+                                    >
+                                        🔄 Regenerate
+                                    </button>
+
+                                    {error && (
+                                        <div className="mb-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+                                            ⚠️ {error}
+                                        </div>
+                                    )}
+
+                                    {/* Send button */}
+                                    <button
+                                        onClick={handleSend}
+                                        disabled={isSending || !generatedReply.trim()}
+                                        className="w-full py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-medium hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20"
+                                    >
+                                        {isSending ? (
+                                            <>
+                                                <div className="animate-spin w-5 h-5 border-2 border-white/30 border-t-white rounded-full" />
+                                                <span>Sending...</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <span>Send Reply</span>
+                                                <span>→</span>
+                                            </>
+                                        )}
+                                    </button>
+                                </>
+                            )}
+                        </div>
+                    )}
+
+                    {/* ─────────────────────────────────────────────────────────────────── */}
+                    {/* WRITE REPLY: User composes with optional polish                     */}
                     {/* ─────────────────────────────────────────────────────────────────── */}
 
                     {replyMode === 'write' && (
                         <div className="p-5">
-                            <div className="flex items-center justify-between mb-3">
-                                <p className="text-sm font-medium text-white/80">
-                                    {generatedDraft ? 'Edit your reply:' : 'Write your reply:'}
-                                </p>
-                                <button onClick={resetReplyState} className="text-xs text-white/40 hover:text-white/70">
-                                    ← Back
-                                </button>
-                            </div>
+                            {/* Back button */}
+                            <button
+                                onClick={resetReplyState}
+                                className="flex items-center gap-1 text-sm text-white/50 hover:text-white/70 mb-4"
+                            >
+                                ← Back to options
+                            </button>
 
-                            <textarea
-                                value={manualReply}
-                                onChange={(e) => setManualReply(e.target.value)}
-                                placeholder="Write your reply..."
-                                rows={6}
-                                className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 resize-none focus:outline-none focus:border-indigo-500/50 mb-4"
-                            />
+                            {!showPolished ? (
+                                <>
+                                    {/* User message input */}
+                                    <div className="mb-4">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <label className="text-sm font-medium text-white/70">Your message</label>
+                                            <VoiceButton
+                                                onTranscription={handleVoiceInput}
+                                                size="sm"
+                                            />
+                                        </div>
+                                        <textarea
+                                            value={userMessage}
+                                            onChange={(e) => setUserMessage(e.target.value)}
+                                            placeholder="Type or speak your reply... e.g., 'Thanks for the update, looking forward to hearing back'"
+                                            rows={5}
+                                            className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 resize-none focus:outline-none focus:border-indigo-500/50 leading-relaxed"
+                                        />
+                                        <p className="text-xs text-white/40 mt-2">
+                                            💡 Click 🎙️ to speak your reply
+                                        </p>
+                                    </div>
 
-                            <div className="flex items-center justify-between">
-                                <button
-                                    onClick={() => generateDraft('improve')}
-                                    disabled={draftLoading || !manualReply.trim()}
-                                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 text-sm transition disabled:opacity-50"
-                                >
-                                    {draftLoading ? (
-                                        <>
-                                            <div className="animate-spin w-4 h-4 border-2 border-white/30 border-t-transparent rounded-full" />
-                                            <span>Improving...</span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <span>✨</span>
-                                            <span>Improve with AI</span>
-                                        </>
+                                    {error && (
+                                        <div className="mb-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+                                            ⚠️ {error}
+                                        </div>
                                     )}
-                                </button>
 
-                                <button
-                                    disabled={!manualReply.trim()}
-                                    className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-medium hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/20"
-                                >
-                                    Send Reply
-                                </button>
-                            </div>
-                        </div>
-                    )}
+                                    {/* Action buttons */}
+                                    {userMessage.trim() && (
+                                        <div className="grid grid-cols-2 gap-3">
+                                            {/* Send as-is */}
+                                            <button
+                                                onClick={handleSend}
+                                                disabled={isSending}
+                                                className="py-3 rounded-xl bg-white/10 hover:bg-white/15 text-white font-medium transition flex items-center justify-center gap-2"
+                                            >
+                                                <span>⚡</span>
+                                                <span>Send As-Is</span>
+                                            </button>
 
-                    {/* ─────────────────────────────────────────────────────────────────── */}
-                    {/* LOADING STATE                                                        */}
-                    {/* ─────────────────────────────────────────────────────────────────── */}
+                                            {/* Polish first */}
+                                            <button
+                                                onClick={handlePolish}
+                                                disabled={isPolishing}
+                                                className="py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-medium hover:opacity-90 transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20"
+                                            >
+                                                {isPolishing ? (
+                                                    <>
+                                                        <div className="animate-spin w-4 h-4 border-2 border-white/30 border-t-white rounded-full" />
+                                                        <span>Polishing...</span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <span>✨</span>
+                                                        <span>Polish & Preview</span>
+                                                    </>
+                                                )}
+                                            </button>
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                <>
+                                    {/* Polished preview */}
+                                    <div className="mb-4">
+                                        <label className="block text-sm font-medium text-white/70 mb-2">Subject</label>
+                                        <input
+                                            type="text"
+                                            value={subject}
+                                            onChange={(e) => setSubject(e.target.value)}
+                                            className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-indigo-500/50"
+                                        />
+                                    </div>
 
-                    {draftLoading && showDraft && !replyMode && (
-                        <div className="p-8 flex flex-col items-center justify-center">
-                            <div className="animate-spin w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full mb-4" />
-                            <p className="text-white/70">AI is writing your reply...</p>
+                                    <div className="mb-4">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <label className="text-sm font-medium text-white/70">✨ Polished Reply</label>
+                                            <button
+                                                onClick={() => setShowPolished(false)}
+                                                className="text-xs text-white/40 hover:text-white/70"
+                                            >
+                                                ← Edit original
+                                            </button>
+                                        </div>
+                                        <textarea
+                                            value={generatedReply}
+                                            onChange={(e) => setGeneratedReply(e.target.value)}
+                                            rows={8}
+                                            className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white resize-none focus:outline-none focus:border-indigo-500/50 leading-relaxed"
+                                        />
+                                    </div>
+
+                                    {error && (
+                                        <div className="mb-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+                                            ⚠️ {error}
+                                        </div>
+                                    )}
+
+                                    <button
+                                        onClick={handleSend}
+                                        disabled={isSending || !generatedReply.trim()}
+                                        className="w-full py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-medium hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20"
+                                    >
+                                        {isSending ? (
+                                            <>
+                                                <div className="animate-spin w-5 h-5 border-2 border-white/30 border-t-white rounded-full" />
+                                                <span>Sending...</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <span>Send Reply</span>
+                                                <span>→</span>
+                                            </>
+                                        )}
+                                    </button>
+                                </>
+                            )}
                         </div>
                     )}
                 </div>

@@ -6,16 +6,10 @@ import { useEffect } from 'react';
 interface VoiceButtonProps {
     onTranscription: (text: string) => void;
     size?: 'sm' | 'md' | 'lg';
-    showLabel?: boolean;
     className?: string;
 }
 
-export function VoiceButton({
-    onTranscription,
-    size = 'md',
-    showLabel = false,
-    className = ''
-}: VoiceButtonProps) {
+export function VoiceButton({ onTranscription, size = 'md', className = '' }: VoiceButtonProps) {
     const {
         isRecording,
         isTranscribing,
@@ -26,7 +20,6 @@ export function VoiceButton({
         error
     } = useVoiceRecorder();
 
-    // Format recording time
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
         const secs = seconds % 60;
@@ -46,14 +39,12 @@ export function VoiceButton({
         }
     };
 
-    // Keyboard shortcut: Escape to cancel
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.key === 'Escape' && isRecording) {
                 cancelRecording();
             }
         };
-
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [isRecording, cancelRecording]);
@@ -66,8 +57,8 @@ export function VoiceButton({
 
     return (
         <div className="relative inline-flex items-center gap-2">
-            {/* Main Button */}
             <button
+                type="button"
                 onClick={handleClick}
                 disabled={isTranscribing}
                 title={isRecording ? 'Click to stop' : 'Click to record'}
@@ -91,42 +82,31 @@ export function VoiceButton({
                     <span>🎙️</span>
                 )}
 
-                {/* Recording pulse ring */}
                 {isRecording && (
                     <span className="absolute inset-0 rounded-xl border-2 border-red-400 animate-ping opacity-75" />
                 )}
             </button>
 
-            {/* Recording indicator */}
             {isRecording && (
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-500/20 border border-red-500/30">
                     <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
                     <span className="text-red-400 text-sm font-medium">{formatTime(recordingTime)}</span>
                     <button
+                        type="button"
                         onClick={cancelRecording}
                         className="ml-1 text-red-400/70 hover:text-red-400 text-xs"
-                        title="Cancel (Esc)"
                     >
                         ✕
                     </button>
                 </div>
             )}
 
-            {/* Transcribing indicator */}
             {isTranscribing && (
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-500/20 border border-indigo-500/30">
-                    <span className="text-indigo-400 text-sm">Transcribing...</span>
-                </div>
+                <span className="text-indigo-400 text-sm">Transcribing...</span>
             )}
 
-            {/* Label */}
-            {showLabel && !isRecording && !isTranscribing && (
-                <span className="text-sm text-white/50">Voice</span>
-            )}
-
-            {/* Error tooltip */}
             {error && (
-                <div className="absolute top-full left-0 mt-2 px-3 py-2 rounded-lg bg-red-500/90 text-white text-xs max-w-[250px] z-50 shadow-lg">
+                <div className="absolute top-full left-0 mt-2 px-3 py-2 rounded-lg bg-red-500/90 text-white text-xs max-w-[200px] z-50">
                     {error}
                 </div>
             )}
