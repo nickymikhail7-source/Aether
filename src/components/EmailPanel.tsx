@@ -463,7 +463,7 @@ export function EmailPanel({ thread, isOpen, onClose }: EmailPanelProps) {
                                                 className="py-3 rounded-xl bg-white/10 hover:bg-white/15 text-white font-medium transition flex items-center justify-center gap-2"
                                             >
                                                 <span>⚡</span>
-                                                <span>Send As-Is</span>
+                                                <span>Quick Send</span>
                                             </button>
 
                                             {/* Polish first */}
@@ -480,7 +480,7 @@ export function EmailPanel({ thread, isOpen, onClose }: EmailPanelProps) {
                                                 ) : (
                                                     <>
                                                         <span>✨</span>
-                                                        <span>Polish & Preview</span>
+                                                        <span>Polish with AI</span>
                                                     </>
                                                 )}
                                             </button>

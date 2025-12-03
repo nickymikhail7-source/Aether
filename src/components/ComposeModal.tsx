@@ -283,7 +283,7 @@ export function ComposeModal({ isOpen, onClose, defaultRecipient, defaultIntent 
                                     className="px-6 py-3 rounded-xl bg-white/10 hover:bg-white/15 text-white font-medium transition flex items-center justify-center gap-2"
                                 >
                                     <span>⚡</span>
-                                    <span>Send As-Is</span>
+                                    <span>Quick Send</span>
                                 </button>
                                 <div className="flex-1" />
                                 <button
@@ -299,7 +299,7 @@ export function ComposeModal({ isOpen, onClose, defaultRecipient, defaultIntent 
                                     ) : (
                                         <>
                                             <span>✨</span>
-                                            <span>Polish & Preview</span>
+                                            <span>Polish with AI</span>
                                         </>
                                     )}
                                 </button>
