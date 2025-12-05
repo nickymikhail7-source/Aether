@@ -2,14 +2,12 @@
 
 import { useState } from 'react';
 import { Sidebar } from '@/components/Sidebar';
-import { useRouter } from 'next/navigation';
 
 export default function DashboardLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
-    const router = useRouter();
     const [conversations, setConversations] = useState<Array<{
         id: string;
         title: string;
@@ -17,24 +15,18 @@ export default function DashboardLayout({
     }>>([]);
 
     const handleNewChat = () => {
-        router.push('/chat');
-        // Optionally reload or reset chat state
-        window.location.reload();
+        // Reload the chat page to start fresh
+        window.location.href = '/chat';
     };
 
     const handleSelectConversation = (id: string) => {
-        router.push(`/chat?id=${id}`);
+        // TODO: Load conversation by ID
+        console.log('Load conversation:', id);
     };
 
     const handleNavigate = (view: string) => {
-        if (view === 'chat') {
-            router.push('/chat');
-        } else if (view === 'inbox') {
-            router.push('/inbox');
-        } else {
-            // Other views can be implemented later
-            console.log('Navigate to:', view);
-        }
+        // Stay in chat - these will be handled by the chat page
+        console.log('Navigate to view:', view);
     };
 
     return (
