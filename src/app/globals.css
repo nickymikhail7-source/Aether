@@ -127,6 +127,60 @@ body {
   animation: shimmer 2s ease-in-out infinite;
 }
 
+/* Chat Page Specific Styles */
+.chat-message {
+  animation: fadeInUp 0.3s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Scrollbar for chat area */
+.chat-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chat-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chat-scroll::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 3px;
+}
+
+.chat-scroll::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* ChatGPT-style Color Palette */
+:root {
+  /* Sidebar colors */
+  --sidebar-bg: #171717;
+  --sidebar-hover: #212121;
+  --sidebar-border: #2e2e2e;
+
+  /* Main chat area colors */
+  --chat-bg: #FFFFFF;
+  --chat-user-bg: #f3f4f6;
+  --chat-assistant-bg: #FFFFFF;
+
+  /* Accent colors */
+  --teal-500: #14B8A6;
+  --teal-600: #0D9488;
+  --coral: #F87171;
+  --amber: #FBBF24;
+}
+
 /* Fade in animation */
 @keyframes fadeIn {
   from {

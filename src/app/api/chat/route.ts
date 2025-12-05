@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
+import { listThreads, getThread } from '@/lib/gmail';
 import Anthropic from '@anthropic-ai/sdk';
 
 const anthropic = new Anthropic({
@@ -26,13 +27,28 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
         }
 
-        // Build email context (simplified for now - you can expand this)
-        const emailContext = `User has an inbox with various emails. The system can:
-- Show inbox summary with stats
-- Display specific emails
-- Draft replies to emails
-- Archive/manage emails
-- Search emails`;
+        // Fetch real Gmail data if user has access token
+        let emailContext = 'No emails available yet.';
+        let recentThreads: any[] = [];
+
+        if (user.gmailAccessToken) {
+            try {
+                recentThreads = await listThreads(user.gmailAccessToken, 10, 'focus');
+
+                // Build email context with real data
+                emailContext = `Recent emails (${recentThreads.length} threads):
+${recentThreads.map((thread, idx) => `
+${idx + 1}. From: ${thread.lastSender}
+   Subject: ${thread.subject}
+   Snippet: ${thread.snippet}
+   Unread: ${thread.unread}
+   Messages: ${thread.messageCount}
+`).join('\n')}`;
+            } catch (error) {
+                console.error('Failed to fetch Gmail data:', error);
+                emailContext = 'Unable to fetch emails at the moment.';
+            }
+        }
 
         // Build conversation history for Claude
         const conversationHistory = history.slice(-10).map((m: any) => ({
@@ -135,14 +151,17 @@ GUIDELINES:
         try {
             // Handle special init command
             if (message === '__INIT__') {
+                const unreadCount = recentThreads.filter(t => t.unread).length;
+                const totalCount = recentThreads.length;
+
                 response = {
-                    content: "👋 Hi! I'm Aether, your AI email assistant.\n\nI can help you summarize your inbox, draft replies, and manage your emails through simple conversation. What would you like to do?",
+                    content: `👋 Hi! I'm Aether, your AI email assistant.\n\nYou have **${totalCount} recent emails** (${unreadCount} unread). I can help you summarize your inbox, draft replies, and manage your emails through simple conversation.\n\nWhat would you like to do?`,
                     statsCard: {
-                        needsReply: 0,
-                        actionItems: 0,
-                        fyi: 0
+                        needsReply: unreadCount,
+                        actionItems: recentThreads.filter(t => t.messageCount > 1).length,
+                        fyi: totalCount - unreadCount
                     },
-                    chips: ["Show my inbox", "What needs my attention?", "Help me write an email"]
+                    chips: ["Show urgent emails", "What needs my attention?", "Help me write an email"]
                 };
             } else {
                 // Call Claude API
