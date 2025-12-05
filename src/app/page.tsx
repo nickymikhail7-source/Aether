@@ -55,12 +55,12 @@ export default function Home() {
                 </p>
               </div>
 
-              {/* Inbox Button */}
+              {/* Chat Button */}
               <Link
-                href="/inbox"
+                href="/chat"
                 className="inline-block px-8 py-3 bg-green hover:bg-green-600 text-white rounded-lg font-medium transition-colors"
               >
-                Open Inbox →
+                Open Aether →
               </Link>
             </div>
           )}
