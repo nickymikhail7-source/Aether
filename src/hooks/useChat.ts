@@ -9,14 +9,20 @@ export function useChat() {
     const [conversationId, setConversationId] = useState<string | null>(null);
 
     const sendMessage = useCallback(async (content: string) => {
-        // Add user message
-        const userMessage: Message = {
-            id: crypto.randomUUID(),
-            role: 'user',
-            content,
-            timestamp: new Date()
-        };
-        setMessages(prev => [...prev, userMessage]);
+        // Skip adding user message for initialization command
+        const isInitCommand = content === '__INIT__';
+
+        if (!isInitCommand) {
+            // Add user message (only for real user input)
+            const userMessage: Message = {
+                id: crypto.randomUUID(),
+                role: 'user',
+                content,
+                timestamp: new Date()
+            };
+            setMessages(prev => [...prev, userMessage]);
+        }
+
         setIsLoading(true);
 
         try {

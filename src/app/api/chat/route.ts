@@ -149,6 +149,8 @@ GUIDELINES:
         let response;
 
         try {
+            console.log('[Chat API] Processing message:', message);
+
             // Handle special init command
             if (message === '__INIT__') {
                 const unreadCount = recentThreads.filter(t => t.unread).length;
@@ -163,7 +165,11 @@ GUIDELINES:
                     },
                     chips: ["Show urgent emails", "What needs my attention?", "Help me write an email"]
                 };
+
+                console.log('[Chat API] Returning INIT response');
             } else {
+                console.log('[Chat API] Calling Claude API...');
+
                 // Call Claude API
                 const claudeResponse = await anthropic.messages.create({
                     model: 'claude-sonnet-4-5-20250929',
@@ -176,11 +182,14 @@ GUIDELINES:
                 });
 
                 const aiText = claudeResponse.content[0].type === 'text' ? claudeResponse.content[0].text : '';
+                console.log('[Chat API] Claude response received, length:', aiText.length);
 
                 // Try to parse as JSON
                 try {
                     response = JSON.parse(aiText);
-                } catch {
+                    console.log('[Chat API] Successfully parsed JSON response');
+                } catch (parseError) {
+                    console.log('[Chat API] Failed to parse JSON, using fallback');
                     // Fallback if not JSON
                     response = {
                         content: aiText,
@@ -192,6 +201,7 @@ GUIDELINES:
             // Save conversation to database
             let dbConversationId = conversationId;
             if (!dbConversationId) {
+                console.log('[Chat API] Creating new conversation');
                 // Create new conversation
                 const newConversation = await prisma.conversation.create({
                     data: {
@@ -202,14 +212,16 @@ GUIDELINES:
                 dbConversationId = newConversation.id;
             }
 
-            // Save user message
-            await prisma.message.create({
-                data: {
-                    conversationId: dbConversationId,
-                    role: 'user',
-                    content: message
-                }
-            });
+            // Save user message (skip for __INIT__)
+            if (message !== '__INIT__') {
+                await prisma.message.create({
+                    data: {
+                        conversationId: dbConversationId,
+                        role: 'user',
+                        content: message
+                    }
+                });
+            }
 
             // Save AI response
             await prisma.message.create({
@@ -226,23 +238,33 @@ GUIDELINES:
                 }
             });
 
+            console.log('[Chat API] Successfully saved to database');
+
             return NextResponse.json({
                 ...response,
                 conversationId: dbConversationId
             });
 
         } catch (error: any) {
-            console.error('Claude API error:', error);
+            console.error('[Chat API] Error:', error);
+            console.error('[Chat API] Error name:', error.name);
+            console.error('[Chat API] Error message:', error.message);
+            console.error('[Chat API] Error stack:', error.stack);
+
             return NextResponse.json({
                 content: 'Sorry, I encountered an error. Please try again.',
-                chips: ["Try again", "Show my inbox"]
+                chips: ["Try again", "Show my inbox"],
+                error: error.message // Include for debugging
             });
         }
 
-    } catch (error) {
-        console.error('Chat API error:', error);
+    } catch (error: any) {
+        console.error('[Chat API] Outer error:', error);
         return NextResponse.json(
-            { error: 'Internal server error' },
+            {
+                error: 'Internal server error',
+                message: error.message
+            },
             { status: 500 }
         );
     }
