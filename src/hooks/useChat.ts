@@ -97,6 +97,8 @@ export function useChat() {
         sendMessage,
         startNewChat,
         loadConversation,
-        conversationId
+        conversationId,
+        setMessages,
+        setIsLoading
     };
 }

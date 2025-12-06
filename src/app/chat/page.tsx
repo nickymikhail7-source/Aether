@@ -1,26 +1,70 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Search, Settings } from 'lucide-react';
 import { useChat } from '@/hooks/useChat';
 import { ChatMessage } from '@/components/chat/ChatMessage';
 import { ChatInput } from '@/components/ChatInput';
+import type { Message } from '@/types/chat';
 
 export default function ChatPage() {
-    const { messages, sendMessage, isLoading } = useChat();
+    const { messages, sendMessage, isLoading, setMessages, setIsLoading } = useChat();
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const [welcomeLoaded, setWelcomeLoaded] = useState(false);
 
     // Auto-scroll to bottom on new messages
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
-    // Send initial welcome message on mount
+    // Fetch welcome message on mount (no __INIT__ needed)
     useEffect(() => {
-        if (messages.length === 0) {
-            sendMessage('__INIT__');
+        if (messages.length === 0 && !welcomeLoaded) {
+            fetchWelcomeMessage();
         }
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const fetchWelcomeMessage = async () => {
+        setIsLoading(true);
+        setWelcomeLoaded(true);
+
+        try {
+            const response = await fetch('/api/chat/welcome', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            if (!response.ok) {
+                throw new Error('Welcome API error');
+            }
+
+            const data = await response.json();
+
+            // Add ONLY the AI response, no user message
+            const welcomeMessage: Message = {
+                id: crypto.randomUUID(),
+                role: 'assistant',
+                content: data.content,
+                statsCard: data.statsCard,
+                chips: data.chips,
+                timestamp: new Date()
+            };
+
+            setMessages([welcomeMessage]);
+        } catch (error) {
+            console.error('Welcome fetch error:', error);
+            // Show fallback welcome
+            setMessages([{
+                id: crypto.randomUUID(),
+                role: 'assistant',
+                content: "👋 Hi! I'm Aether, your AI email assistant. How can I help you today?",
+                chips: ["Show my inbox", "What needs my attention?"],
+                timestamp: new Date()
+            }]);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     const handleChipClick = (chip: string) => {
         sendMessage(chip);
@@ -56,7 +100,7 @@ export default function ChatPage() {
                                     <span className="text-2xl">✨</span>
                                 </div>
                                 <h2 className="text-xl font-semibold text-gray-900 mb-2">
-                                    Welcome to Aether
+                                    {isLoading ? 'Loading...' : 'Welcome to Aether'}
                                 </h2>
                                 <p className="text-gray-600 text-sm">
                                     Your AI-powered email assistant. Ask me anything about your inbox.
