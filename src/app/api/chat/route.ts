@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
+import { getToken } from 'next-auth/jwt';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 import { listThreads, getThread } from '@/lib/gmail';
 import Anthropic from '@anthropic-ai/sdk';
+import { cookies } from 'next/headers';
 
 const anthropic = new Anthropic({
     apiKey: process.env.ANTHROPIC_API_KEY,
@@ -14,21 +16,42 @@ export async function POST(req: NextRequest) {
     console.log('Timestamp:', new Date().toISOString());
 
     try {
-        // Log environment variables (safe subset)
-        console.log('Environment check:');
-        console.log('- ANTHROPIC_API_KEY exists:', !!process.env.ANTHROPIC_API_KEY);
-        console.log('- ANTHROPIC_API_KEY prefix:', process.env.ANTHROPIC_API_KEY?.substring(0, 15) + '...');
-        console.log('- DATABASE_URL exists:', !!process.env.DATABASE_URL);
+        // Check cookies first
+        const cookieStore = await cookies();
+        const sessionCookie = cookieStore.get('__Secure-next-auth.session-token');
+        console.log('Session cookie exists:', !!sessionCookie);
 
+        // Try getToken first (more reliable for API routes)
+        const token = await getToken({
+            req,
+            secret: process.env.NEXTAUTH_SECRET
+        });
+        console.log('Token check:');
+        console.log('- Token exists:', !!token);
+        console.log('- Token email:', token?.email);
+
+        // Fallback to getServerSession
         const session = await getServerSession(authOptions);
         console.log('Session check:');
         console.log('- Session exists:', !!session);
         console.log('- User email:', session?.user?.email);
 
-        if (!session?.user?.email) {
-            console.error('❌ No session found');
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        // Use token first, then session
+        const userEmail = (token?.email as string) || session?.user?.email;
+
+        if (!userEmail) {
+            console.error('❌ No session/token found');
+            return NextResponse.json({
+                error: 'Unauthorized',
+                debug: {
+                    tokenExists: !!token,
+                    sessionExists: !!session,
+                    cookieExists: !!sessionCookie
+                }
+            }, { status: 401 });
         }
+
+        console.log('✅ User authenticated:', userEmail);
 
         const { message, conversationId, history } = await req.json();
         console.log('Request data:');
@@ -39,11 +62,11 @@ export async function POST(req: NextRequest) {
         // Get user from database
         console.log('Fetching user from database...');
         const user = await prisma.user.findUnique({
-            where: { email: session.user.email }
+            where: { email: userEmail }
         });
 
         if (!user) {
-            console.error('❌ User not found in database:', session.user.email);
+            console.error('❌ User not found in database:', userEmail);
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
         }
 
