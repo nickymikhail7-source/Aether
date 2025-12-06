@@ -178,6 +178,22 @@ GUIDELINES:
         try {
             console.log('[Chat API] Processing message:', message);
 
+            // Check if API key is available
+            if (!process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY.trim() === '') {
+                console.error('❌ ANTHROPIC_API_KEY is not set!');
+
+                // Provide helpful fallback response
+                return NextResponse.json({
+                    content: `⚠️ **API Configuration Required**\n\nThe Anthropic API key is not configured in your Vercel environment variables.\n\n**To fix this:**\n1. Go to Vercel Dashboard → Settings → Environment Variables\n2. Add \`ANTHROPIC_API_KEY\` with your Anthropic API key\n3. Redeploy the application\n\n**Temporary Response:**\nYou have ${recentThreads.length} emails. I can see your inbox, but I need the API key to provide AI-powered responses.`,
+                    statsCard: {
+                        needsReply: recentThreads.filter(t => t.unread).length,
+                        actionItems: recentThreads.filter(t => t.messageCount > 1).length,
+                        fyi: recentThreads.length - recentThreads.filter(t => t.unread).length
+                    },
+                    chips: ["Check Vercel settings", "What can you do?", "Show raw data"]
+                });
+            }
+
             // Handle special init command
             if (message === '__INIT__') {
                 const unreadCount = recentThreads.filter(t => t.unread).length;
