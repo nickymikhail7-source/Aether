@@ -116,6 +116,49 @@ ${idx + 1}. From: ${thread.lastSender}
             console.warn('⚠️ No Gmail access token for user');
         }
 
+        // Check if user wants to read full email content
+        let fullEmailContent = '';
+        const lowerMessage = message.toLowerCase();
+        const wantsFullEmail = lowerMessage.includes('read full') ||
+            lowerMessage.includes('full email') ||
+            lowerMessage.includes('show full') ||
+            lowerMessage.includes('entire email') ||
+            lowerMessage.includes('complete email');
+
+        if (wantsFullEmail && recentThreads.length > 0 && user.gmailAccessToken) {
+            console.log('User wants full email, fetching content...');
+            try {
+                // Find the most relevant thread (first one or mentioned one)
+                const targetThread = recentThreads[0];
+                const fullThread = await getThread(user.gmailAccessToken, targetThread.id);
+
+                if (fullThread && fullThread.messages.length > 0) {
+                    const lastMessage = fullThread.messages[fullThread.messages.length - 1];
+                    // Clean up HTML if present
+                    let bodyContent = lastMessage.body;
+                    if (lastMessage.isHtml) {
+                        // Simple HTML to text conversion
+                        bodyContent = bodyContent
+                            .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+                            .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+                            .replace(/<[^>]+>/g, ' ')
+                            .replace(/&nbsp;/g, ' ')
+                            .replace(/&amp;/g, '&')
+                            .replace(/&lt;/g, '<')
+                            .replace(/&gt;/g, '>')
+                            .replace(/\s+/g, ' ')
+                            .trim()
+                            .substring(0, 3000); // Limit to 3000 chars
+                    }
+
+                    fullEmailContent = `\n\nFULL EMAIL CONTENT:\nFrom: ${lastMessage.from}\nSubject: ${targetThread.subject}\nDate: ${lastMessage.date}\n\nBody:\n${bodyContent}`;
+                    console.log('✅ Full email content fetched');
+                }
+            } catch (error) {
+                console.error('❌ Failed to fetch full email:', error);
+            }
+        }
+
         // Build conversation history for Claude
         const conversationHistory = history.slice(-10).map((m: any) => ({
             role: m.role,
@@ -126,6 +169,7 @@ ${idx + 1}. From: ${thread.lastSender}
         const systemPrompt = `You are Aether, an AI email assistant. You help users manage their inbox through natural conversation.
 
 ${emailContext}
+${fullEmailContent}
 
 YOUR CAPABILITIES:
 1. Summarize inbox status (show stats card)
