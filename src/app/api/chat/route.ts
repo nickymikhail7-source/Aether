@@ -80,12 +80,28 @@ export async function POST(req: NextRequest) {
         if (user.gmailAccessToken) {
             console.log('Fetching Gmail threads...');
             try {
-                recentThreads = await listThreads(user.gmailAccessToken, 10, 'focus');
+                // Check if user is asking for specific sender
+                const lowerMessage = message.toLowerCase();
+                let category = 'focus';
+                let fetchCount = 50; // Increased from 10
+
+                // Detect specific email requests
+                if (lowerMessage.includes('substack')) {
+                    category = 'substack';
+                } else if (lowerMessage.includes('newsletter')) {
+                    category = 'newsletters';
+                } else if (lowerMessage.includes('all') && lowerMessage.includes('email')) {
+                    category = 'all-categories';
+                } else if (lowerMessage.includes('sync') || lowerMessage.includes('refresh')) {
+                    category = 'all-categories';
+                    fetchCount = 100; // Fetch more when syncing
+                }
+
+                recentThreads = await listThreads(user.gmailAccessToken, fetchCount, category);
                 console.log('✅ Gmail threads fetched:', recentThreads.length);
 
                 // Build email context with real data
-                emailContext = `Recent emails (${recentThreads.length} threads):
-${recentThreads.map((thread, idx) => `
+                emailContext = `Recent emails (${recentThreads.length} threads):\n${recentThreads.map((thread, idx) => `
 ${idx + 1}. From: ${thread.lastSender}
    Subject: ${thread.subject}
    Snippet: ${thread.snippet}

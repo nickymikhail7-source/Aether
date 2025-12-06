@@ -57,9 +57,13 @@ export async function listThreads(
         sent: 'is:sent',
         drafts: 'is:draft',
         all: 'is:inbox',
+        // New comprehensive queries
+        'all-categories': 'is:inbox OR in:category:promotions OR in:category:updates OR in:category:forums',
+        substack: 'from:substack.com',
+        focus: 'is:inbox is:important OR is:inbox is:unread',
     }
 
-    const q = queries[category] || queries.priority
+    const q = queries[category] || queries.focus
 
     try {
         // Get list of thread IDs
