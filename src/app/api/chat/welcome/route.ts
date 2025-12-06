@@ -1,22 +1,55 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
+import { getToken } from 'next-auth/jwt';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 import { listThreads } from '@/lib/gmail';
+import { cookies } from 'next/headers';
 
 export async function POST(req: NextRequest) {
+    console.log('=== WELCOME API CALLED ===');
+
     try {
+        // Check cookies
+        const cookieStore = await cookies();
+        const sessionCookie = cookieStore.get('__Secure-next-auth.session-token');
+        console.log('Session cookie exists:', !!sessionCookie);
+
+        // Try getToken first (more reliable for API routes)
+        const token = await getToken({
+            req,
+            secret: process.env.NEXTAUTH_SECRET
+        });
+        console.log('Token exists:', !!token, 'Email:', token?.email);
+
+        // Fallback to getServerSession
         const session = await getServerSession(authOptions);
-        if (!session?.user?.email) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        console.log('Session exists:', !!session, 'Email:', session?.user?.email);
+
+        // Use token first, then session
+        const userEmail = (token?.email as string) || session?.user?.email;
+
+        if (!userEmail) {
+            console.error('❌ No auth found');
+            return NextResponse.json({
+                error: 'Unauthorized',
+                debug: {
+                    tokenExists: !!token,
+                    sessionExists: !!session,
+                    cookieExists: !!sessionCookie
+                }
+            }, { status: 401 });
         }
+
+        console.log('✅ User authenticated:', userEmail);
 
         // Get user from database
         const user = await prisma.user.findUnique({
-            where: { email: session.user.email }
+            where: { email: userEmail }
         });
 
         if (!user) {
+            console.error('❌ User not found:', userEmail);
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
         }
 
@@ -26,6 +59,7 @@ export async function POST(req: NextRequest) {
         if (user.gmailAccessToken) {
             try {
                 recentThreads = await listThreads(user.gmailAccessToken, 10, 'focus');
+                console.log('✅ Fetched', recentThreads.length, 'threads');
             } catch (error) {
                 console.error('[Welcome API] Failed to fetch Gmail data:', error);
             }
