@@ -19,6 +19,7 @@ interface SidebarProps {
     onNewChat: () => void;
     onSelectConversation: (id: string) => void;
     onNavigate: (view: 'chat' | 'inbox' | 'needs-reply' | 'starred' | 'sent' | 'drafts') => void;
+    onSendCommand?: (command: string) => void;
 }
 
 export function Sidebar({
@@ -27,13 +28,29 @@ export function Sidebar({
     emailCounts = { inbox: 0, needsReply: 0, drafts: 0 },
     onNewChat,
     onSelectConversation,
-    onNavigate
+    onNavigate,
+    onSendCommand
 }: SidebarProps) {
     const [activeView, setActiveView] = useState<string>('chat');
 
+    // Map views to chat commands
+    const viewCommands: Record<string, string> = {
+        'inbox': 'Show my inbox',
+        'needs-reply': 'What needs my reply?',
+        'starred': 'Show starred emails',
+        'sent': 'Show sent emails',
+        'drafts': 'Show my drafts'
+    };
+
     const handleNavigate = (view: any) => {
         setActiveView(view);
-        onNavigate(view);
+
+        // If we have a send command handler and view has a command, send it
+        if (onSendCommand && viewCommands[view]) {
+            onSendCommand(viewCommands[view]);
+        } else {
+            onNavigate(view);
+        }
     };
 
     // Group conversations by date

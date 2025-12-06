@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { Search, Settings } from 'lucide-react';
 import { useChat } from '@/hooks/useChat';
 import { ChatMessage } from '@/components/chat/ChatMessage';
@@ -16,6 +16,18 @@ export default function ChatPage() {
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
+
+    // Listen for sidebar command events
+    useEffect(() => {
+        const handleCommand = (event: CustomEvent<{ command: string }>) => {
+            sendMessage(event.detail.command);
+        };
+
+        window.addEventListener('aether-command', handleCommand as EventListener);
+        return () => {
+            window.removeEventListener('aether-command', handleCommand as EventListener);
+        };
+    }, [sendMessage]);
 
     // Fetch welcome message on mount (no __INIT__ needed)
     useEffect(() => {

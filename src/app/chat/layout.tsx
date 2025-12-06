@@ -25,8 +25,15 @@ export default function DashboardLayout({
     };
 
     const handleNavigate = (view: string) => {
-        // Stay in chat - these will be handled by the chat page
+        // Stay in chat - these will be handled via commands
         console.log('Navigate to view:', view);
+    };
+
+    const handleSendCommand = (command: string) => {
+        // Dispatch custom event that chat page will listen for
+        window.dispatchEvent(new CustomEvent('aether-command', {
+            detail: { command }
+        }));
     };
 
     return (
@@ -41,6 +48,7 @@ export default function DashboardLayout({
                 onNewChat={handleNewChat}
                 onSelectConversation={handleSelectConversation}
                 onNavigate={handleNavigate}
+                onSendCommand={handleSendCommand}
             />
             <main className="flex-1 flex flex-col overflow-hidden">
                 {children}
