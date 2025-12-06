@@ -123,7 +123,18 @@ ${idx + 1}. From: ${thread.lastSender}
             lowerMessage.includes('full email') ||
             lowerMessage.includes('show full') ||
             lowerMessage.includes('entire email') ||
-            lowerMessage.includes('complete email');
+            lowerMessage.includes('complete email') ||
+            lowerMessage.includes('show me the email') ||
+            lowerMessage.includes('actual email') ||
+            lowerMessage.includes('original email') ||
+            lowerMessage.includes('email as it is') ||
+            lowerMessage.includes('actual content') ||
+            lowerMessage.includes('real content') ||
+            lowerMessage.includes('don\'t summarize') ||
+            lowerMessage.includes('dont summarize') ||
+            lowerMessage.includes('without summary') ||
+            lowerMessage.includes('raw email') ||
+            (lowerMessage.includes('show') && lowerMessage.includes('content'));
 
         if (wantsFullEmail && recentThreads.length > 0 && user.gmailAccessToken) {
             console.log('User wants full email, fetching content...');
