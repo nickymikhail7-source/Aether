@@ -10,30 +10,55 @@ const anthropic = new Anthropic({
 });
 
 export async function POST(req: NextRequest) {
+    console.log('=== CHAT API CALLED ===');
+    console.log('Timestamp:', new Date().toISOString());
+
     try {
+        // Log environment variables (safe subset)
+        console.log('Environment check:');
+        console.log('- ANTHROPIC_API_KEY exists:', !!process.env.ANTHROPIC_API_KEY);
+        console.log('- ANTHROPIC_API_KEY prefix:', process.env.ANTHROPIC_API_KEY?.substring(0, 15) + '...');
+        console.log('- DATABASE_URL exists:', !!process.env.DATABASE_URL);
+
         const session = await getServerSession(authOptions);
+        console.log('Session check:');
+        console.log('- Session exists:', !!session);
+        console.log('- User email:', session?.user?.email);
+
         if (!session?.user?.email) {
+            console.error('❌ No session found');
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
         const { message, conversationId, history } = await req.json();
+        console.log('Request data:');
+        console.log('- Message:', message);
+        console.log('- ConversationId:', conversationId);
+        console.log('- History length:', history?.length || 0);
 
         // Get user from database
+        console.log('Fetching user from database...');
         const user = await prisma.user.findUnique({
             where: { email: session.user.email }
         });
 
         if (!user) {
+            console.error('❌ User not found in database:', session.user.email);
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
         }
+
+        console.log('✅ User found:', user.id);
+        console.log('- Gmail token exists:', !!user.gmailAccessToken);
 
         // Fetch real Gmail data if user has access token
         let emailContext = 'No emails available yet.';
         let recentThreads: any[] = [];
 
         if (user.gmailAccessToken) {
+            console.log('Fetching Gmail threads...');
             try {
                 recentThreads = await listThreads(user.gmailAccessToken, 10, 'focus');
+                console.log('✅ Gmail threads fetched:', recentThreads.length);
 
                 // Build email context with real data
                 emailContext = `Recent emails (${recentThreads.length} threads):
@@ -45,9 +70,11 @@ ${idx + 1}. From: ${thread.lastSender}
    Messages: ${thread.messageCount}
 `).join('\n')}`;
             } catch (error) {
-                console.error('Failed to fetch Gmail data:', error);
+                console.error('❌ Failed to fetch Gmail data:', error);
                 emailContext = 'Unable to fetch emails at the moment.';
             }
+        } else {
+            console.warn('⚠️ No Gmail access token for user');
         }
 
         // Build conversation history for Claude
