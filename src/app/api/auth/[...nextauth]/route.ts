@@ -64,13 +64,17 @@ export const authOptions: NextAuthOptions = {
         }),
     ],
     callbacks: {
-        async jwt({ token, account }) {
-            // Initial sign in
-            if (account) {
+        async jwt({ token, account, user }) {
+            // Initial sign in - store user info AND tokens
+            if (account && user) {
                 return {
+                    ...token,
                     accessToken: account.access_token,
                     expiresAt: account.expires_at,
                     refreshToken: account.refresh_token,
+                    email: user.email,
+                    name: user.name,
+                    picture: user.image,
                 }
             }
 
@@ -83,12 +87,16 @@ export const authOptions: NextAuthOptions = {
             return refreshAccessToken(token)
         },
         async session({ session, token }) {
+            // Pass user info from token to session
             if (session.user) {
-                session.accessToken = token.accessToken as string
-                session.refreshToken = token.refreshToken as string
-                session.expiresAt = token.expiresAt as number
-                session.error = token.error
+                session.user.email = token.email as string
+                session.user.name = token.name as string
+                session.user.image = token.picture as string
             }
+            session.accessToken = token.accessToken as string
+            session.refreshToken = token.refreshToken as string
+            session.expiresAt = token.expiresAt as number
+            session.error = token.error
             return session
         },
         async signIn({ user, account }) {
