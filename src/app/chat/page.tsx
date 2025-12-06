@@ -88,23 +88,23 @@ export default function ChatPage() {
         console.log('Email action:', action, emailId, emailData);
 
         switch (action) {
-            case 'auto-reply':
+            case 'reply':
                 // Send command to AI to draft a reply
                 sendMessage(`Draft a reply to the email from ${emailData.sender} about "${emailData.subject}"`);
                 break;
 
-            case 'voice-reply':
-                // TODO: Open voice modal
-                sendMessage(`I want to reply to the email from ${emailData.sender}`);
+            case 'snooze':
+                // Snooze for later
+                sendMessage(`Snooze the email from ${emailData.sender} for later`);
                 break;
 
-            case 'view-full':
-                // Request full email content
-                sendMessage(`Show me the full email from ${emailData.sender} about "${emailData.subject}"`);
+            case 'mark-read':
+                // Mark as read
+                sendMessage(`Mark the email from ${emailData.sender} as read`);
                 break;
 
             case 'archive':
-                // Send archive command
+                // Archive the email
                 sendMessage(`Archive the email from ${emailData.sender} about "${emailData.subject}"`);
                 break;
 

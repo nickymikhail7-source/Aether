@@ -109,29 +109,10 @@ export function Sidebar({
                     />
                     <NavItem
                         icon={AlertCircle}
-                        label="Needs Reply"
+                        label="Urgent"
                         badge={emailCounts.needsReply}
                         isActive={activeView === 'needs-reply'}
                         onClick={() => handleNavigate('needs-reply')}
-                    />
-                    <NavItem
-                        icon={Star}
-                        label="Starred"
-                        isActive={activeView === 'starred'}
-                        onClick={() => handleNavigate('starred')}
-                    />
-                    <NavItem
-                        icon={Send}
-                        label="Sent"
-                        isActive={activeView === 'sent'}
-                        onClick={() => handleNavigate('sent')}
-                    />
-                    <NavItem
-                        icon={FileText}
-                        label="Drafts"
-                        badge={emailCounts.drafts}
-                        isActive={activeView === 'drafts'}
-                        onClick={() => handleNavigate('drafts')}
                     />
                 </div>
 
