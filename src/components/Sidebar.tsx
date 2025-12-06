@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { MessageSquare, Inbox, AlertCircle, Star, Send, FileText, Plus, MoreVertical } from 'lucide-react';
+import { signOut } from 'next-auth/react';
+import { MessageSquare, Inbox, AlertCircle, Star, Send, FileText, Plus, MoreVertical, LogOut } from 'lucide-react';
 
 interface SidebarProps {
     conversations?: Array<{
@@ -145,14 +146,20 @@ export function Sidebar({
 
             {/* User Menu */}
             <div className="p-3 border-t border-[#2e2e2e]">
-                <button className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg hover:bg-[#212121] transition-colors">
+                <div className="flex items-center gap-3 px-3 py-2.5">
                     <div className="w-8 h-8 rounded-full bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center text-white text-sm font-semibold">
                         U
                     </div>
                     <div className="flex-1 text-left">
                         <div className="text-sm text-white font-medium">User</div>
                     </div>
-                    <MoreVertical className="w-4 h-4 text-gray-400" />
+                </div>
+                <button
+                    onClick={() => signOut({ callbackUrl: '/' })}
+                    className="flex items-center gap-2 w-full px-3 py-2 mt-1 rounded-lg text-red-400 hover:bg-[#212121] hover:text-red-300 transition-colors text-sm"
+                >
+                    <LogOut className="w-4 h-4" />
+                    <span>Log out</span>
                 </button>
             </div>
         </aside>
