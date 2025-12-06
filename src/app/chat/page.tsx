@@ -31,7 +31,8 @@ export default function ChatPage() {
         try {
             const response = await fetch('/api/chat/welcome', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include' // Include session cookies
             });
 
             if (!response.ok) {
