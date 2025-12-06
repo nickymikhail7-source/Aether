@@ -1,6 +1,6 @@
 'use client';
 
-import type { Message } from '@/types/chat';
+import type { Message, EmailCardData } from '@/types/chat';
 import { EmailCard } from './EmailCard';
 import { DraftCard } from './DraftCard';
 import { StatsCard } from './StatsCard';
@@ -9,9 +9,10 @@ import { QuickChips } from './QuickChips';
 interface ChatMessageProps {
     message: Message;
     onSendChip?: (chip: string) => void;
+    onEmailAction?: (action: string, emailId: string, emailData: EmailCardData) => void;
 }
 
-export function ChatMessage({ message, onSendChip }: ChatMessageProps) {
+export function ChatMessage({ message, onSendChip, onEmailAction }: ChatMessageProps) {
     const isUser = message.role === 'user';
 
     // Try to parse content if it looks like JSON (fallback for when API returns JSON in content)
@@ -79,7 +80,7 @@ export function ChatMessage({ message, onSendChip }: ChatMessageProps) {
                     {/* Email Card */}
                     {emailCard && (
                         <div className="my-4">
-                            <EmailCard data={emailCard} />
+                            <EmailCard data={emailCard} onAction={onEmailAction} />
                         </div>
                     )}
 

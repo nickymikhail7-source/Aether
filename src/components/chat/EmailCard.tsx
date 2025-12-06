@@ -1,36 +1,32 @@
 'use client';
 
+import { useState } from 'react';
 import type { EmailCardData } from '@/types/chat';
 
 interface EmailCardProps {
     data: EmailCardData;
+    onAction?: (action: string, emailId: string, emailData: EmailCardData) => void;
 }
 
-export function EmailCard({ data }: EmailCardProps) {
+export function EmailCard({ data, onAction }: EmailCardProps) {
+    const [isLoading, setIsLoading] = useState<string | null>(null);
+
     const accentColor = {
         urgent: 'bg-red-400',
         action: 'bg-amber-400',
         info: 'bg-teal-500'
-    }[data.priority];
+    }[data.priority] || 'bg-teal-500';
 
-    const handleAutoReply = async () => {
-        // TODO: Implement auto-reply
-        console.log('Auto reply for:', data.id);
-    };
+    const handleAction = async (action: string) => {
+        setIsLoading(action);
 
-    const handleVoiceReply = () => {
-        // TODO: Implement voice reply
-        console.log('Voice reply for:', data.id);
-    };
+        // Call parent handler if provided
+        if (onAction) {
+            onAction(action, data.id, data);
+        }
 
-    const handleViewFull = () => {
-        // TODO: Implement view full email
-        console.log('View full:', data.id);
-    };
-
-    const handleArchive = async () => {
-        // TODO: Implement archive
-        console.log('Archive:', data.id);
+        // Reset loading after a brief delay
+        setTimeout(() => setIsLoading(null), 1500);
     };
 
     return (
@@ -59,28 +55,32 @@ export function EmailCard({ data }: EmailCardProps) {
                 {/* Actions */}
                 <div className="flex gap-2 flex-wrap">
                     <button
-                        onClick={handleAutoReply}
-                        className="flex items-center gap-1.5 px-3 py-2 bg-teal-600 text-white rounded-md text-[13px] font-medium hover:bg-teal-500 transition"
+                        onClick={() => handleAction('auto-reply')}
+                        disabled={isLoading !== null}
+                        className="flex items-center gap-1.5 px-3 py-2 bg-teal-600 text-white rounded-md text-[13px] font-medium hover:bg-teal-500 transition disabled:opacity-50"
                     >
-                        ✨ Auto Reply
+                        {isLoading === 'auto-reply' ? '⏳' : '✨'} Auto Reply
                     </button>
                     <button
-                        onClick={handleVoiceReply}
-                        className="flex items-center gap-1.5 px-3 py-2 bg-white border border-gray-200 text-gray-700 rounded-md text-[13px] hover:bg-gray-50 transition"
+                        onClick={() => handleAction('voice-reply')}
+                        disabled={isLoading !== null}
+                        className="flex items-center gap-1.5 px-3 py-2 bg-white border border-gray-200 text-gray-700 rounded-md text-[13px] hover:bg-gray-50 transition disabled:opacity-50"
                     >
                         🎙️ Voice Reply
                     </button>
                     <button
-                        onClick={handleViewFull}
-                        className="flex items-center gap-1.5 px-3 py-2 bg-white border border-gray-200 text-gray-700 rounded-md text-[13px] hover:bg-gray-50 transition"
+                        onClick={() => handleAction('view-full')}
+                        disabled={isLoading !== null}
+                        className="flex items-center gap-1.5 px-3 py-2 bg-white border border-gray-200 text-gray-700 rounded-md text-[13px] hover:bg-gray-50 transition disabled:opacity-50"
                     >
-                        View Full
+                        {isLoading === 'view-full' ? '⏳' : '📄'} View Full
                     </button>
                     <button
-                        onClick={handleArchive}
-                        className="flex items-center gap-1.5 px-3 py-2 bg-white border border-gray-200 text-gray-700 rounded-md text-[13px] hover:bg-gray-50 transition"
+                        onClick={() => handleAction('archive')}
+                        disabled={isLoading !== null}
+                        className="flex items-center gap-1.5 px-3 py-2 bg-white border border-gray-200 text-gray-700 rounded-md text-[13px] hover:bg-gray-50 transition disabled:opacity-50"
                     >
-                        Archive
+                        {isLoading === 'archive' ? '⏳' : '📦'} Archive
                     </button>
                 </div>
             </div>

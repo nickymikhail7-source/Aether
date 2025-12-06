@@ -83,6 +83,36 @@ export default function ChatPage() {
         sendMessage(chip);
     };
 
+    // Handle email card action buttons
+    const handleEmailAction = (action: string, emailId: string, emailData: any) => {
+        console.log('Email action:', action, emailId, emailData);
+
+        switch (action) {
+            case 'auto-reply':
+                // Send command to AI to draft a reply
+                sendMessage(`Draft a reply to the email from ${emailData.sender} about "${emailData.subject}"`);
+                break;
+
+            case 'voice-reply':
+                // TODO: Open voice modal
+                sendMessage(`I want to reply to the email from ${emailData.sender}`);
+                break;
+
+            case 'view-full':
+                // Request full email content
+                sendMessage(`Show me the full email from ${emailData.sender} about "${emailData.subject}"`);
+                break;
+
+            case 'archive':
+                // Send archive command
+                sendMessage(`Archive the email from ${emailData.sender} about "${emailData.subject}"`);
+                break;
+
+            default:
+                console.log('Unknown action:', action);
+        }
+    };
+
     return (
         <div className="flex-1 flex flex-col h-screen bg-white">
             {/* Header */}
@@ -127,6 +157,7 @@ export default function ChatPage() {
                                     key={message.id}
                                     message={message}
                                     onSendChip={handleChipClick}
+                                    onEmailAction={handleEmailAction}
                                 />
                             ))}
                             <div ref={messagesEndRef} />
